@@ -13,9 +13,30 @@ const paymentSettingsRoutes = require('./routes/paymentSettingsRoutes.cjs'); // 
 const app = express();
 
 // =======================
-// ✅ Middleware
+// ✅ CORS Middleware Setup
 // =======================
-app.use(cors());
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://climax-frontend.vercel.app',
+  'https://watchclimax.vercel.app', // ✅ new domain
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS Not Allowed'));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+
+
 app.use(express.json());
 
 // =======================
@@ -23,7 +44,7 @@ app.use(express.json());
 // =======================
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
 })
   .then(() => {
     console.log('✅ Connected to MongoDB Atlas');
