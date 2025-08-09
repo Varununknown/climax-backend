@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 
 // Route Imports
 const authRoutes = require('./routes/authRoutes.cjs');
+const googleAuthRoutes = require('./routes/googleAuth.cjs'); // Added Google Auth routes
 const contentRoutes = require('./routes/contentRoutes.cjs');
 const paymentRoutes = require('./routes/paymentRoutes.cjs');
 const paymentSettingsRoutes = require('./routes/paymentSettingsRoutes.cjs'); // ✅ NEW
@@ -36,7 +37,6 @@ app.use(
   })
 );
 
-
 app.use(express.json());
 
 // =======================
@@ -57,6 +57,7 @@ mongoose.connect(process.env.MONGO_URI, {
 // ✅ API Routes
 // =======================
 app.use('/api/auth', authRoutes);
+app.use('/api/auth', googleAuthRoutes);  // <-- Add Google auth routes here
 app.use('/api/contents', contentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
@@ -66,5 +67,5 @@ app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
 // =======================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running`);
 });
