@@ -216,6 +216,42 @@ router.patch('/:id/decline', async (req, res) => {
   }
 });
 
+// ✅ Update payment status (temporary workaround for admin actions)
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { action } = req.query;
+  
+  try {
+    let status;
+    if (action === 'approve') {
+      status = 'approved';
+    } else if (action === 'decline') {
+      status = 'declined';
+    } else {
+      return res.status(400).json({ message: 'Invalid action. Use approve or decline' });
+    }
+
+    const payment = await Payment.findByIdAndUpdate(
+      id, 
+      { status }, 
+      { new: true }
+    );
+    
+    if (!payment) {
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+
+    log(`✅ Payment ${action}d (PUT):`, payment.transactionId);
+    return res.status(200).json({ 
+      message: `Payment ${action}d successfully`,
+      payment 
+    });
+  } catch (err) {
+    console.error(`❌ Error ${action}ing payment:`, err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Health check for admin routes deployment
 router.get('/admin-check', (req, res) => {
   res.json({ 
