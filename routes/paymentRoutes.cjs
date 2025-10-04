@@ -216,4 +216,13 @@ router.patch('/:id/decline', async (req, res) => {
   }
 });
 
+// Health check for admin routes deployment
+router.get('/admin-check', (req, res) => {
+  res.json({ 
+    message: 'Admin payment routes active',
+    timestamp: new Date().toISOString(),
+    postRoutesAvailable: true
+  });
+});
+
 module.exports = router;
