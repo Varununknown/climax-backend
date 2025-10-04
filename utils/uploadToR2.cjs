@@ -1,4 +1,5 @@
 const AWS = require('aws-sdk');
+const { generateCDNUrl } = require('./cdnHelper.cjs');
 require('dotenv').config();
 
 const s3 = new AWS.S3({
@@ -19,7 +20,8 @@ const uploadToR2 = async (fileBuffer, fileName, mimeType) => {
   };
 
   const uploadResult = await s3.upload(params).promise();
-  return uploadResult.Location;
+  // Return CDN URL for super fast delivery
+  return generateCDNUrl(fileName);
 };
 
 module.exports = { uploadToR2 };

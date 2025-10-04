@@ -23,6 +23,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'https://climax-frontend.vercel.app',
   'https://watchclimax.vercel.app', // ✅ new domain
+  'https://climaxott.vercel.app', // ✅ current domain
 ];
 
 app.use(
@@ -35,7 +36,7 @@ app.use(
       }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], // ✅ Added PATCH method
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
@@ -67,25 +68,31 @@ app.use('/api/contents', contentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
 
-// Video proxy endpoint for better loading performance
+// CDN-optimized video endpoint for super fast delivery
 app.get('/api/video/:id', async (req, res) => {
   try {
     const Content = require('./models/Content.cjs');
+    const { optimizeVideoUrl } = require('./utils/cdnHelper.cjs');
+    
     const content = await Content.findById(req.params.id);
     if (!content) {
       return res.status(404).json({ message: 'Content not found' });
     }
     
-    // Set caching headers for better performance
+    // Get CDN-optimized URL
+    const optimizedUrl = optimizeVideoUrl(content.videoUrl);
+    
+    // Set aggressive caching headers for CDN
     res.set({
-      'Cache-Control': 'public, max-age=3600',
-      'Content-Type': 'video/mp4'
+      'Cache-Control': 'public, max-age=31536000, immutable', // 1 year cache
+      'Content-Type': 'video/mp4',
+      'X-CDN-Optimized': 'true'
     });
     
-    // Redirect to the video URL with caching
-    res.redirect(301, content.videoUrl);
+    // Redirect to CDN URL for super fast delivery
+    res.redirect(301, optimizedUrl);
   } catch (error) {
-    console.error('Video proxy error:', error);
+    console.error('Video CDN error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

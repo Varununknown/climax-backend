@@ -1,25 +1,42 @@
 const express = require('express');
 const router = express.Router();
 const Content = require('../models/Content.cjs');
+const { optimizeVideoUrl } = require('../utils/cdnHelper.cjs');
 
-// GET all contents
+// GET all contents with CDN optimization
 router.get('/', async (req, res) => {
   try {
     const contents = await Content.find().sort({ createdAt: -1 });
-    res.json(contents);
+    
+    // Optimize all video URLs for CDN delivery
+    const optimizedContents = contents.map(content => ({
+      ...content.toObject(),
+      videoUrl: optimizeVideoUrl(content.videoUrl),
+      thumbnail: content.thumbnail // Keep thumbnails optimized too
+    }));
+    
+    res.json(optimizedContents);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ GET content by ID (this was missing!)
+// ✅ GET content by ID with CDN optimization  
 router.get('/:id', async (req, res) => {
   try {
     const content = await Content.findById(req.params.id);
     if (!content) {
       return res.status(404).json({ message: 'Content not found' });
     }
-    res.json(content);
+    
+    // Return content with CDN-optimized URLs
+    const optimizedContent = {
+      ...content.toObject(),
+      videoUrl: optimizeVideoUrl(content.videoUrl),
+      thumbnail: content.thumbnail
+    };
+    
+    res.json(optimizedContent);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

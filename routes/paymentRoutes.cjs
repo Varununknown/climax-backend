@@ -18,21 +18,35 @@ router.post('/', async (req, res) => {
 
     const existing = await Payment.findOne({ userId, contentId });
     if (existing) {
-      return res.status(409).json({ message: 'Payment already exists' });
+      log('✅ Payment already exists - content already unlocked:', existing.transactionId);
+      return res.status(200).json({ 
+        message: 'Content already unlocked - payment exists',
+        alreadyPaid: true 
+      });
     }
 
-    const newPayment = new Payment({ userId, contentId, amount, transactionId });
+    // ✅ AUTO-APPROVE: New payments are automatically approved
+    const newPayment = new Payment({ 
+      userId, 
+      contentId, 
+      amount, 
+      transactionId,
+      status: 'approved' // 🚀 AUTO-APPROVED for instant unlock
+    });
     await newPayment.save();
 
-    log('✅ Payment saved:', transactionId);
-    return res.status(201).json({ message: 'Payment saved successfully' });
+    log('✅ New payment auto-approved:', transactionId);
+    return res.status(201).json({ 
+      message: 'Payment saved and auto-approved successfully',
+      alreadyPaid: false 
+    });
   } catch (err) {
     console.error('❌ Error saving payment:', err);
     return res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Check if payment exists
+// Check if payment exists and is approved
 router.get('/check', async (req, res) => {
   const { userId, contentId } = req.query;
   try {
@@ -40,7 +54,13 @@ router.get('/check', async (req, res) => {
       return res.status(400).json({ message: 'Missing query parameters' });
     }
 
-    const payment = await Payment.findOne({ userId, contentId });
+    // Only check for approved payments for content unlock
+    const payment = await Payment.findOne({ 
+      userId, 
+      contentId, 
+      status: 'approved' 
+    });
+    
     return res.status(200).json({ paid: !!payment });
   } catch (err) {
     console.error('❌ Error checking payment:', err);
@@ -63,6 +83,7 @@ router.get('/all', async (req, res) => {
           contentId: p.contentId,
           amount: p.amount,
           transactionId: p.transactionId,
+          status: p.status,
           createdAt: p.createdAt,
           userName: user?.name || 'Unknown',
           userEmail: user?.email || 'Unknown',
@@ -91,6 +112,56 @@ router.delete('/:id', async (req, res) => {
     return res.status(200).json({ message: 'Payment deleted successfully' });
   } catch (err) {
     console.error('❌ Error deleting payment:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ✅ Approve payment (admin approval)
+router.patch('/:id/approve', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const payment = await Payment.findByIdAndUpdate(
+      id, 
+      { status: 'approved' }, 
+      { new: true }
+    );
+    
+    if (!payment) {
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+
+    log('✅ Payment approved:', payment.transactionId);
+    return res.status(200).json({ 
+      message: 'Payment approved successfully',
+      payment 
+    });
+  } catch (err) {
+    console.error('❌ Error approving payment:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ✅ Decline payment (admin decline)
+router.patch('/:id/decline', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const payment = await Payment.findByIdAndUpdate(
+      id, 
+      { status: 'declined' }, 
+      { new: true }
+    );
+    
+    if (!payment) {
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+
+    log('❌ Payment declined:', payment.transactionId);
+    return res.status(200).json({ 
+      message: 'Payment declined successfully',
+      payment 
+    });
+  } catch (err) {
+    console.error('❌ Error declining payment:', err);
     return res.status(500).json({ message: 'Server error' });
   }
 });
