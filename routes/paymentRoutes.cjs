@@ -16,13 +16,24 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
+    // Check if user already has ANY payment for this content (prevent duplicates)
     const existing = await Payment.findOne({ userId, contentId });
     if (existing) {
-      log('✅ Payment already exists - content already unlocked:', existing.transactionId);
-      return res.status(200).json({ 
-        message: 'Content already unlocked - payment exists',
-        alreadyPaid: true 
-      });
+      log('✅ Payment already exists - content status:', existing.status);
+      
+      if (existing.status === 'approved') {
+        return res.status(200).json({ 
+          message: 'Content already unlocked - payment approved',
+          alreadyPaid: true,
+          payment: existing
+        });
+      } else {
+        return res.status(409).json({ 
+          message: `Payment already exists with status: ${existing.status}`,
+          alreadyExists: true,
+          payment: existing
+        });
+      }
     }
 
     // ✅ AUTO-APPROVE: New payments are automatically approved
@@ -64,6 +75,31 @@ router.get('/check', async (req, res) => {
     return res.status(200).json({ paid: !!payment });
   } catch (err) {
     console.error('❌ Error checking payment:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Check if any payment exists (regardless of status) to prevent duplicates
+router.get('/check-any', async (req, res) => {
+  const { userId, contentId } = req.query;
+  try {
+    if (!userId || !contentId) {
+      return res.status(400).json({ message: 'Missing query parameters' });
+    }
+
+    const payment = await Payment.findOne({ userId, contentId });
+    
+    if (payment) {
+      return res.status(200).json({ 
+        exists: true, 
+        status: payment.status,
+        payment: payment 
+      });
+    } else {
+      return res.status(200).json({ exists: false });
+    }
+  } catch (err) {
+    console.error('❌ Error checking any payment:', err);
     return res.status(500).json({ message: 'Server error' });
   }
 });
