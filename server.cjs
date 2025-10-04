@@ -1,8 +1,12 @@
 require('dotenv').config();
 
+// Memory optimization for free hosting
+process.env.NODE_OPTIONS = '--max-old-space-size=256';
+
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const path = require('path');
 
 // Route Imports
 const authRoutes = require('./routes/authRoutes.cjs');
@@ -40,11 +44,13 @@ app.use(
 app.use(express.json());
 
 // =======================
-// ✅ MongoDB Connection
+// ✅ MongoDB Connection (Optimized for free hosting)
 // =======================
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  maxPoolSize: 5, // Limit connection pool
+  bufferMaxEntries: 0 // Disable buffering
 })
   .then(() => {
     console.log('✅ Connected to MongoDB Atlas');
@@ -61,6 +67,45 @@ app.use('/api/auth', googleAuthRoutes);  // <-- Add Google auth routes here
 app.use('/api/contents', contentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
+
+// Video proxy endpoint for better loading performance
+app.get('/api/video/:id', async (req, res) => {
+  try {
+    const Content = require('./models/Content.cjs');
+    const content = await Content.findById(req.params.id);
+    if (!content) {
+      return res.status(404).json({ message: 'Content not found' });
+    }
+    
+    // Set caching headers for better performance
+    res.set({
+      'Cache-Control': 'public, max-age=3600',
+      'Content-Type': 'video/mp4'
+    });
+    
+    // Redirect to the video URL with caching
+    res.redirect(301, content.videoUrl);
+  } catch (error) {
+    console.error('Video proxy error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// =======================
+// ✅ Serve Frontend Static Files  
+// =======================
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// Handle SPA routing - serve index.html for all non-API routes
+app.get('*', (req, res) => {
+  // Skip API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ message: 'API endpoint not found' });
+  }
+  
+  // Serve index.html for all other routes (SPA routing)
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
 
 // =======================
 // ✅ Start Server
