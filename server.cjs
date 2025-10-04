@@ -6,7 +6,6 @@ process.env.NODE_OPTIONS = '--max-old-space-size=256';
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const path = require('path');
 
 // Route Imports
 const authRoutes = require('./routes/authRoutes.cjs');
@@ -89,27 +88,6 @@ app.get('/api/video/:id', async (req, res) => {
     console.error('Video proxy error:', error);
     res.status(500).json({ message: 'Server error' });
   }
-});
-
-// =======================
-// ✅ Serve Frontend Static Files  
-// =======================
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
-
-// Handle SPA routing - serve index.html for all non-API routes
-app.use((req, res, next) => {
-  // Skip API routes
-  if (req.path.startsWith('/api/')) {
-    return next();
-  }
-  
-  // Serve index.html for all other routes (SPA routing)
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-});
-
-// 404 handler for API routes
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ message: 'API endpoint not found' });
 });
 
 // =======================
