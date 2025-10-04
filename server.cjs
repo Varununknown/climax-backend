@@ -97,14 +97,19 @@ app.get('/api/video/:id', async (req, res) => {
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Handle SPA routing - serve index.html for all non-API routes
-app.get('*', (req, res) => {
+app.use((req, res, next) => {
   // Skip API routes
   if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ message: 'API endpoint not found' });
+    return next();
   }
   
   // Serve index.html for all other routes (SPA routing)
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
+
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ message: 'API endpoint not found' });
 });
 
 // =======================
