@@ -116,6 +116,31 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// ✅ Approve payment (admin approval) - POST version for CORS compatibility
+router.post('/:id/approve', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const payment = await Payment.findByIdAndUpdate(
+      id, 
+      { status: 'approved' }, 
+      { new: true }
+    );
+    
+    if (!payment) {
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+
+    log('✅ Payment approved (POST):', payment.transactionId);
+    return res.status(200).json({ 
+      message: 'Payment approved successfully',
+      payment 
+    });
+  } catch (err) {
+    console.error('❌ Error approving payment:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // ✅ Approve payment (admin approval)
 router.patch('/:id/approve', async (req, res) => {
   const { id } = req.params;
@@ -137,6 +162,31 @@ router.patch('/:id/approve', async (req, res) => {
     });
   } catch (err) {
     console.error('❌ Error approving payment:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ✅ Decline payment (admin decline) - POST version for CORS compatibility
+router.post('/:id/decline', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const payment = await Payment.findByIdAndUpdate(
+      id, 
+      { status: 'declined' }, 
+      { new: true }
+    );
+    
+    if (!payment) {
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+
+    log('❌ Payment declined (POST):', payment.transactionId);
+    return res.status(200).json({ 
+      message: 'Payment declined successfully',
+      payment 
+    });
+  } catch (err) {
+    console.error('❌ Error declining payment:', err);
     return res.status(500).json({ message: 'Server error' });
   }
 });
