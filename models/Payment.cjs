@@ -23,7 +23,7 @@ const paymentSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'approved', 'declined'],
-    default: 'pending'
+    default: 'approved' // ✅ AUTO-APPROVE by default for instant unlock
   }
 }, { timestamps: true }); // adds createdAt and updatedAt automatically
 

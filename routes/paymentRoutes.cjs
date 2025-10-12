@@ -36,20 +36,21 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // ✅ AUTO-APPROVE: New payments are automatically approved
+    // ✅ AUTO-APPROVE: New payments are automatically approved for instant unlock
     const newPayment = new Payment({ 
       userId, 
       contentId, 
       amount, 
       transactionId,
-      status: 'approved' // 🚀 AUTO-APPROVED for instant unlock
+      status: 'approved' // 🚀 EXPLICIT AUTO-APPROVAL - instant unlock on payment
     });
     await newPayment.save();
 
-    log('✅ New payment auto-approved:', transactionId);
+    log('✅ Payment auto-approved and saved:', transactionId);
     return res.status(201).json({ 
-      message: 'Payment saved and auto-approved successfully',
-      alreadyPaid: false 
+      message: 'Payment auto-approved successfully - content unlocked!',
+      alreadyPaid: false,
+      payment: newPayment
     });
   } catch (err) {
     console.error('❌ Error saving payment:', err);

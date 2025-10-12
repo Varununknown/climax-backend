@@ -47,10 +47,10 @@ app.use(express.json());
 // ✅ MongoDB Connection (Optimized for free hosting)
 // =======================
 mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  maxPoolSize: 5, // Limit connection pool
-  bufferMaxEntries: 0 // Disable buffering
+  // Modern Mongoose options (v6+)
+  maxPoolSize: 5, // Limit connection pool for free tiers
+  serverSelectionTimeoutMS: 8000, // Fail fast if DB not reachable
+  socketTimeoutMS: 45000, // Reasonable socket timeout
 })
   .then(() => {
     console.log('✅ Connected to MongoDB Atlas');
@@ -101,6 +101,16 @@ app.get('/api/video/:id', async (req, res) => {
 // ✅ Start Server
 // =======================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`📊 API endpoints available at http://localhost:${PORT}/api/`);
+});
+
+// Test route to verify server is working
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    port: PORT 
+  });
 });
