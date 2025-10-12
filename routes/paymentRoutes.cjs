@@ -16,33 +16,24 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Check if user already has ANY payment for this content (prevent duplicates)
-    const existing = await Payment.findOne({ userId, contentId });
+    // Check if user already has approved payment for this content
+    const existing = await Payment.findOne({ userId, contentId, status: 'approved' });
     if (existing) {
-      log('✅ Payment already exists - content status:', existing.status);
-      
-      if (existing.status === 'approved') {
-        return res.status(200).json({ 
-          message: 'Content already unlocked - payment approved',
-          alreadyPaid: true,
-          payment: existing
-        });
-      } else {
-        return res.status(409).json({ 
-          message: `Payment already exists with status: ${existing.status}`,
-          alreadyExists: true,
-          payment: existing
-        });
-      }
+      log('✅ Content already unlocked - approved payment exists:', existing.transactionId);
+      return res.status(200).json({ 
+        message: 'Content already unlocked - payment approved',
+        alreadyPaid: true,
+        payment: existing
+      });
     }
 
-    // ✅ AUTO-APPROVE: New payments are automatically approved for instant unlock
+    // ✅ AUTO-APPROVE: All new payments are automatically approved for instant unlock
     const newPayment = new Payment({ 
       userId, 
       contentId, 
       amount, 
       transactionId,
-      status: 'approved' // 🚀 EXPLICIT AUTO-APPROVAL - instant unlock on payment
+      status: 'approved' // 🚀 INSTANT AUTO-APPROVAL
     });
     await newPayment.save();
 
