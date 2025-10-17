@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: __dirname + '/.env' });
 
 // Memory optimization for free hosting
 process.env.NODE_OPTIONS = '--max-old-space-size=256';

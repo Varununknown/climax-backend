@@ -27,7 +27,13 @@
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "keywords": ["ott", "streaming", "nodejs", "express", "mongodb"],
+  "keywords": [
+    "ott",
+    "streaming",
+    "nodejs",
+    "express",
+    "mongodb"
+  ],
   "author": "Varun",
   "license": "MIT"
 }

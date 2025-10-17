@@ -16,15 +16,35 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Check if user already has approved payment for this content
-    const existing = await Payment.findOne({ userId, contentId, status: 'approved' });
+    // Check if user already has ANY payment for this content (prevent duplicates)
+    const existing = await Payment.findOne({ userId, contentId });
     if (existing) {
-      log('✅ Content already unlocked - approved payment exists:', existing.transactionId);
+      log('✅ Payment already exists:', existing.transactionId, 'Status:', existing.status);
       return res.status(200).json({ 
-        message: 'Content already unlocked - payment approved',
-        alreadyPaid: true,
+        message: existing.status === 'approved' 
+          ? 'Content already unlocked! You have access to watch this content.'
+          : 'Payment already submitted and is being processed.',
+        alreadyPaid: existing.status === 'approved',
         payment: existing
       });
+    }
+
+    // Check if there's a pending payment with same transaction ID (prevent duplicate submissions)
+    const duplicateTransaction = await Payment.findOne({ transactionId });
+    if (duplicateTransaction) {
+      log('⚠️ Duplicate transaction ID attempted:', transactionId);
+      
+      if (duplicateTransaction.status === 'approved') {
+        return res.status(200).json({ 
+          message: 'Payment already processed! Content is unlocked.',
+          alreadyPaid: true,
+          payment: duplicateTransaction
+        });
+      } else {
+        return res.status(400).json({ 
+          message: 'This transaction ID has already been used. Please use a different transaction ID.'
+        });
+      }
     }
 
     // ✅ AUTO-APPROVE: All new payments are automatically approved for instant unlock
@@ -39,7 +59,7 @@ router.post('/', async (req, res) => {
 
     log('✅ Payment auto-approved and saved:', transactionId);
     return res.status(201).json({ 
-      message: 'Payment auto-approved successfully - content unlocked!',
+      message: 'Payment approved successfully! Content unlocked instantly.',
       alreadyPaid: false,
       payment: newPayment
     });
