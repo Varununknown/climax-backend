@@ -46,6 +46,8 @@ app.use(express.json());
 // =======================
 // ✅ MongoDB Connection (Optimized for free hosting)
 // =======================
+let mongoConnected = false;
+
 mongoose.connect(process.env.MONGO_URI, {
   // Modern Mongoose options (v6+)
   maxPoolSize: 5, // Limit connection pool for free tiers
@@ -53,11 +55,30 @@ mongoose.connect(process.env.MONGO_URI, {
   socketTimeoutMS: 45000, // Reasonable socket timeout
 })
   .then(() => {
+    mongoConnected = true;
     console.log('✅ Connected to MongoDB Atlas');
   })
   .catch(err => {
+    mongoConnected = false;
     console.error('❌ MongoDB connection error:', err.message);
+    console.error('⚠️  IMPORTANT: Add your IP to MongoDB Atlas whitelist:');
+    console.error('   1. Go to: https://cloud.mongodb.com/');
+    console.error('   2. Select cluster "ott"');
+    console.error('   3. Network Access → IP Whitelist');
+    console.error('   4. Add IP: 0.0.0.0/0 (Allow access from anywhere)');
+    console.error('   5. Or add your specific IP address');
   });
+
+// =======================
+// ✅ Health Check Endpoint
+// =======================
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    mongo: mongoConnected ? 'connected' : 'disconnected',
+    message: mongoConnected ? 'Database connected' : 'Database disconnected - check IP whitelist'
+  });
+});
 
 // =======================
 // ✅ API Routes
