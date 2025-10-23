@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const contentSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
-  videoUrl: { type: String, required: true },
+  videoUrl: { type: String, required: false }, // Made optional for upcoming content
   thumbnail: { type: String, required: true },
   category: { type: String, required: true },
   type: { type: String, enum: ['movie', 'series', 'show'], required: true },
@@ -13,6 +13,7 @@ const contentSchema = new mongoose.Schema({
   genre: { type: [String], default: [] },
   rating: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
+  language: { type: String, required: false }, // Added language field
   createdAt: {
     type: Date,
     default: () => Date.now()
