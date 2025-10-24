@@ -7,7 +7,9 @@ const settingsSchema = new mongoose.Schema({
   upiId: { type: String, required: true },
   qrCodeUrl: { type: String, required: true },
   merchantName: { type: String, required: true },
-  isActive: { type: Boolean, default: true }
+  isActive: { type: Boolean, default: true },
+  payuEnabled: { type: Boolean, default: true }, // ✅ Enable PayU tab
+  payuMerchantKey: { type: String, default: null }, // Optional - for reference
 }, { timestamps: true });
 
 const PaymentSettings = mongoose.model('PaymentSettings', settingsSchema);
@@ -29,7 +31,7 @@ router.get('/', async (req, res) => {
 // POST to save or update latest settings
 router.post('/', async (req, res) => {
   try {
-    const { upiId, qrCodeUrl, merchantName, isActive } = req.body;
+    const { upiId, qrCodeUrl, merchantName, isActive, payuEnabled, payuMerchantKey } = req.body;
     if (!upiId || !qrCodeUrl || !merchantName) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
@@ -40,14 +42,23 @@ router.post('/', async (req, res) => {
       existing.upiId = upiId;
       existing.qrCodeUrl = qrCodeUrl;
       existing.merchantName = merchantName;
-      existing.isActive = isActive;
+      existing.isActive = isActive !== undefined ? isActive : existing.isActive;
+      existing.payuEnabled = payuEnabled !== undefined ? payuEnabled : existing.payuEnabled;
+      existing.payuMerchantKey = payuMerchantKey || existing.payuMerchantKey;
       await existing.save();
-      return res.json({ message: '✅ Settings updated successfully' });
+      return res.json({ message: '✅ Settings updated successfully', settings: existing });
     }
 
-    const newSettings = new PaymentSettings({ upiId, qrCodeUrl, merchantName, isActive });
+    const newSettings = new PaymentSettings({ 
+      upiId, 
+      qrCodeUrl, 
+      merchantName, 
+      isActive,
+      payuEnabled: payuEnabled !== undefined ? payuEnabled : true,
+      payuMerchantKey: payuMerchantKey || null
+    });
     await newSettings.save();
-    return res.status(201).json({ message: '✅ Settings saved successfully' });
+    return res.status(201).json({ message: '✅ Settings saved successfully', settings: newSettings });
   } catch (err) {
     console.error('❌ Error saving payment settings:', err);
     return res.status(500).json({ message: 'Server error' });
