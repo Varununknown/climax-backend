@@ -48,26 +48,44 @@ app.use(express.json());
 // =======================
 let mongoConnected = false;
 
-mongoose.connect(process.env.MONGO_URI, {
-  // Modern Mongoose options (v6+)
-  maxPoolSize: 5, // Limit connection pool for free tiers
-  serverSelectionTimeoutMS: 8000, // Fail fast if DB not reachable
-  socketTimeoutMS: 45000, // Reasonable socket timeout
-})
-  .then(() => {
-    mongoConnected = true;
-    console.log('✅ Connected to MongoDB Atlas');
+if (process.env.MONGO_URI) {
+  mongoose.connect(process.env.MONGO_URI, {
+    // Modern Mongoose options (v6+)
+    maxPoolSize: 5, // Limit connection pool for free tiers
+    serverSelectionTimeoutMS: 8000, // Fail fast if DB not reachable
+    socketTimeoutMS: 45000, // Reasonable socket timeout
   })
-  .catch(err => {
-    mongoConnected = false;
-    console.error('❌ MongoDB connection error:', err.message);
-    console.error('⚠️  IMPORTANT: Add your IP to MongoDB Atlas whitelist:');
-    console.error('   1. Go to: https://cloud.mongodb.com/');
-    console.error('   2. Select cluster "ott"');
-    console.error('   3. Network Access → IP Whitelist');
-    console.error('   4. Add IP: 0.0.0.0/0 (Allow access from anywhere)');
-    console.error('   5. Or add your specific IP address');
+    .then(() => {
+      mongoConnected = true;
+      console.log('✅ Connected to MongoDB Atlas');
+    })
+    .catch(err => {
+      mongoConnected = false;
+      console.error('❌ MongoDB connection error:', err.message);
+      console.error('⚠️  IMPORTANT: Add your IP to MongoDB Atlas whitelist:');
+      console.error('   1. Go to: https://cloud.mongodb.com/');
+      console.error('   2. Select cluster "ott"');
+      console.error('   3. Network Access → IP Whitelist');
+      console.error('   4. Add IP: 0.0.0.0/0 (Allow access from anywhere)');
+      console.error('   5. Or add your specific IP address');
+    });
+} else {
+  console.warn('⚠️  WARNING: MONGO_URI environment variable not set');
+  console.warn('   Database features will not be available');
+  console.warn('   Set MONGO_URI to enable full backend functionality');
+}
+
+// =======================
+// ✅ Root Endpoint
+// =======================
+app.get('/', (req, res) => {
+  res.json({
+    message: '🎬 Climax OTT Backend',
+    status: 'online',
+    timestamp: new Date().toISOString(),
+    database: mongoConnected ? 'connected' : 'disconnected'
   });
+});
 
 // =======================
 // ✅ Health Check Endpoint
@@ -125,13 +143,4 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 API endpoints available at http://localhost:${PORT}/api/`);
-});
-
-// Test route to verify server is working
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
-    timestamp: new Date().toISOString(),
-    port: PORT 
-  });
 });
