@@ -21,22 +21,49 @@ const app = express();
 // =======================
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000',
   'https://climax-frontend.vercel.app',
-  'https://watchclimax.vercel.app', // ✅ new domain
-  'https://climaxott.vercel.app', // ✅ current domain
+  'https://watchclimax.vercel.app',
+  'https://climaxott.vercel.app',
+  'https://climax-fullstack.onrender.com',
+  // Allow any Vercel deployment
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('CORS Not Allowed'));
+      // Allow no origin (mobile apps, curl requests)
+      if (!origin) {
+        return callback(null, true);
       }
+      
+      // Allow specific origins
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // Allow any Vercel subdomain
+      if (origin.includes('vercel.app')) {
+        return callback(null, true);
+      }
+      
+      // Allow any render subdomain
+      if (origin.includes('onrender.com')) {
+        return callback(null, true);
+      }
+      
+      // Allow localhost variants
+      if (origin.includes('localhost')) {
+        return callback(null, true);
+      }
+      
+      // Reject others
+      console.warn(`❌ CORS blocked: ${origin}`);
+      callback(new Error('CORS Not Allowed'));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], // ✅ Added PATCH method
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
