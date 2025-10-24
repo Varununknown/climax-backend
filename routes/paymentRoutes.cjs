@@ -66,6 +66,9 @@ router.post('/', async (req, res) => {
       transactionId,
       status: 'approved' // 🚀 INSTANT AUTO-APPROVAL
     });
+    
+    console.log('💾 Payment object created, status explicitly set to: approved');
+    
     await newPayment.save();
 
     console.log('✅✅✅ PAYMENT AUTO-APPROVED AND SAVED');
@@ -74,8 +77,10 @@ router.post('/', async (req, res) => {
       userId: newPayment.userId,
       contentId: newPayment.contentId,
       transactionId: newPayment.transactionId,
-      status: newPayment.status
+      status: newPayment.status,
+      createdAt: newPayment.createdAt
     });
+    console.log('📊 VERIFICATION: Confirming status is', newPayment.status, '(should be "approved")');
     console.log('═══════════════════════════════════════════════════════');
     console.log('');
     
