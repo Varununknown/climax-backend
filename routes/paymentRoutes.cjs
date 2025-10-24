@@ -98,14 +98,18 @@ router.get('/check', async (req, res) => {
   try {
     console.log('═══════════════════════════════════════════════════════');
     console.log('🔍 /payments/check CALLED');
-    console.log('Query params:', { userId, contentId });
+    console.log('Query params received:', { userId, contentId });
+    console.log('  userId type:', typeof userId, 'value:', userId);
+    console.log('  contentId type:', typeof contentId, 'value:', contentId);
     
     if (!userId || !contentId) {
-      console.log('❌ Missing parameters!');
+      console.log('❌ Missing parameters! Returning error');
+      console.log('═══════════════════════════════════════════════════════\n');
       return res.status(400).json({ message: 'Missing query parameters' });
     }
 
-    console.log(`📡 Searching for payment: userId=${userId}, contentId=${contentId}, status=approved`);
+    console.log(`📡 Building query...`);
+    console.log(`   Finding: { userId: "${userId}", contentId: "${contentId}", status: "approved" }`);
 
     // Only check for approved payments for content unlock
     const payment = await Payment.findOne({ 
@@ -114,8 +118,11 @@ router.get('/check', async (req, res) => {
       status: 'approved' 
     });
     
+    console.log('📍 Query executed');
+    
     if (payment) {
-      console.log('✅ PAYMENT FOUND:', {
+      console.log('✅✅✅ PAYMENT FOUND!');
+      console.log('Payment details:', {
         _id: payment._id,
         userId: payment.userId,
         contentId: payment.contentId,
@@ -123,31 +130,37 @@ router.get('/check', async (req, res) => {
         status: payment.status,
         createdAt: payment.createdAt
       });
-      console.log('═══════════════════════════════════════════════════════');
-      console.log('');
+      console.log('Returning: { paid: true }');
+      console.log('═══════════════════════════════════════════════════════\n');
       return res.status(200).json({ paid: true, payment: payment });
     } else {
-      console.log('❌ NO PAYMENT FOUND');
+      console.log('❌ PAYMENT NOT FOUND');
       
       // Debug: Check if ANY payment exists for this user-content combo
       const anyPayment = await Payment.findOne({ userId, contentId });
       if (anyPayment) {
-        console.log('⚠️ Payment exists but status is NOT approved:', {
+        console.log('⚠️⚠️⚠️ PAYMENT EXISTS BUT STATUS IS WRONG!');
+        console.log('Found payment:', {
           status: anyPayment.status,
-          transactionId: anyPayment.transactionId
+          transactionId: anyPayment.transactionId,
+          userId: anyPayment.userId,
+          contentId: anyPayment.contentId
         });
       } else {
-        console.log('⚠️ NO PAYMENT exists at all for this user-content combo');
+        console.log('⚠️ NO PAYMENT exists for this user-content combo at all');
+        
+        // Check if there are ANY payments in the database
+        const totalPayments = await Payment.countDocuments();
+        console.log(`ℹ️ Total payments in database: ${totalPayments}`);
       }
       
-      console.log('═══════════════════════════════════════════════════════');
-      console.log('');
+      console.log('Returning: { paid: false }');
+      console.log('═══════════════════════════════════════════════════════\n');
       return res.status(200).json({ paid: false });
     }
   } catch (err) {
     console.error('❌ Error checking payment:', err);
-    console.log('═══════════════════════════════════════════════════════');
-    console.log('');
+    console.log('═══════════════════════════════════════════════════════\n');
     return res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
