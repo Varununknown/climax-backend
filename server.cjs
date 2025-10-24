@@ -76,7 +76,18 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     mongo: mongoConnected ? 'connected' : 'disconnected',
-    message: mongoConnected ? 'Database connected' : 'Database disconnected - check IP whitelist'
+    message: mongoConnected ? 'Database connected' : 'Database disconnected - check IP whitelist',
+    timestamp: new Date().toISOString(),
+    buildVersion: '60551c1-force-rebuild'
+  });
+});
+
+// Quick diagnostic endpoint
+app.get('/api/status', (req, res) => {
+  res.json({
+    backend: 'online',
+    routes: ['auth', 'contents', 'payments', 'payment-settings'],
+    time: new Date().toISOString()
   });
 });
 
