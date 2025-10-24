@@ -21,17 +21,36 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
+    // ✅ CRITICAL: Convert string IDs to ObjectIds for MongoDB
+    const userIdObj = new require('mongoose').Types.ObjectId(userId);
+    const contentIdObj = new require('mongoose').Types.ObjectId(contentId);
+
     // Check if user already has ANY payment for this content (prevent duplicates)
-    const existing = await Payment.findOne({ userId, contentId });
+    const existing = await Payment.findOne({ userId: userIdObj, contentId: contentIdObj });
     if (existing) {
       console.log('✅ Payment already exists:', existing.transactionId, 'Status:', existing.status);
+      
+      // If payment is already approved, treat as success
+      if (existing.status === 'approved') {
+        console.log('✅✅✅ PAYMENT IS ALREADY APPROVED - Returning 200 with paid: true');
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('');
+        return res.status(200).json({ 
+          message: 'Content already unlocked! You have access to watch this content.',
+          alreadyPaid: true,
+          paid: true,  // ✅ CRITICAL: Add this for verification
+          payment: existing
+        });
+      }
+      
+      // If payment exists but not approved yet, inform user
+      console.log('⚠️ Payment exists but not approved yet (status:', existing.status + ')');
       console.log('═══════════════════════════════════════════════════════');
       console.log('');
       return res.status(200).json({ 
-        message: existing.status === 'approved' 
-          ? 'Content already unlocked! You have access to watch this content.'
-          : 'Payment already submitted and is being processed.',
-        alreadyPaid: existing.status === 'approved',
+        message: 'Payment already submitted and is being processed.',
+        alreadyPaid: false,
+        paid: false,
         payment: existing
       });
     }
@@ -60,8 +79,8 @@ router.post('/', async (req, res) => {
 
     // ✅ AUTO-APPROVE: All new payments are automatically approved for instant unlock
     const newPayment = new Payment({ 
-      userId, 
-      contentId, 
+      userId: userIdObj,     // ✅ Use converted ObjectId
+      contentId: contentIdObj, // ✅ Use converted ObjectId
       amount, 
       transactionId,
       status: 'approved' // 🚀 INSTANT AUTO-APPROVAL
@@ -87,6 +106,7 @@ router.post('/', async (req, res) => {
     return res.status(201).json({ 
       message: 'Payment approved successfully! Content unlocked instantly.',
       alreadyPaid: false,
+      paid: true,  // ✅ CRITICAL: Add this for verification
       payment: newPayment
     });
   } catch (err) {
@@ -116,12 +136,17 @@ router.get('/check', async (req, res) => {
     console.log(`📡 Building query...`);
     console.log(`   Finding: { userId: "${userId}", contentId: "${contentId}", status: "approved" }`);
 
+    // ✅ CRITICAL FIX: Convert string IDs to MongoDB ObjectIds
+    const query = {
+      userId: new require('mongoose').Types.ObjectId(userId),
+      contentId: new require('mongoose').Types.ObjectId(contentId),
+      status: 'approved'
+    };
+    
+    console.log('✅ Query after ObjectId conversion:', query);
+
     // Only check for approved payments for content unlock
-    const payment = await Payment.findOne({ 
-      userId, 
-      contentId, 
-      status: 'approved' 
-    });
+    const payment = await Payment.findOne(query);
     
     console.log('📍 Query executed');
     
@@ -139,10 +164,16 @@ router.get('/check', async (req, res) => {
       console.log('═══════════════════════════════════════════════════════\n');
       return res.status(200).json({ paid: true, payment: payment });
     } else {
-      console.log('❌ PAYMENT NOT FOUND');
+      console.log('❌ PAYMENT NOT FOUND with status "approved"');
       
-      // Debug: Check if ANY payment exists for this user-content combo
-      const anyPayment = await Payment.findOne({ userId, contentId });
+      // Debug: Check if ANY payment exists for this user-content combo (with ObjectId conversion)
+      const userIdObj = new require('mongoose').Types.ObjectId(userId);
+      const contentIdObj = new require('mongoose').Types.ObjectId(contentId);
+      
+      const anyPayment = await Payment.findOne({ 
+        userId: userIdObj,
+        contentId: contentIdObj
+      });
       if (anyPayment) {
         console.log('⚠️⚠️⚠️ PAYMENT EXISTS BUT STATUS IS WRONG!');
         console.log('Found payment:', {
@@ -178,7 +209,11 @@ router.get('/check-any', async (req, res) => {
       return res.status(400).json({ message: 'Missing query parameters' });
     }
 
-    const payment = await Payment.findOne({ userId, contentId });
+    // ✅ CRITICAL: Convert string IDs to ObjectIds
+    const userIdObj = new require('mongoose').Types.ObjectId(userId);
+    const contentIdObj = new require('mongoose').Types.ObjectId(contentId);
+
+    const payment = await Payment.findOne({ userId: userIdObj, contentId: contentIdObj });
     
     if (payment) {
       return res.status(200).json({ 
