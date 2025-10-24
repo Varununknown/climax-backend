@@ -20,6 +20,15 @@ const paymentSchema = new mongoose.Schema({
     required: true,
     unique: true // globally unique
   },
+  paymentMethod: {
+    type: String,
+    enum: ['upi', 'payu'],
+    default: 'upi'
+  },
+  payuTransactionId: {
+    type: String,
+    default: null
+  },
   status: {
     type: String,
     enum: ['pending', 'approved', 'declined'],
