@@ -12,14 +12,21 @@ router.post('/', async (req, res) => {
   try {
     const { userId, contentId, amount, transactionId } = req.body;
 
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('💰 POST /payments - NEW PAYMENT SUBMISSION');
+    console.log('Received:', { userId, contentId, amount, transactionId });
+
     if (!userId || !contentId || !amount || !transactionId) {
+      console.log('❌ Missing required fields');
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
     // Check if user already has ANY payment for this content (prevent duplicates)
     const existing = await Payment.findOne({ userId, contentId });
     if (existing) {
-      log('✅ Payment already exists:', existing.transactionId, 'Status:', existing.status);
+      console.log('✅ Payment already exists:', existing.transactionId, 'Status:', existing.status);
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('');
       return res.status(200).json({ 
         message: existing.status === 'approved' 
           ? 'Content already unlocked! You have access to watch this content.'
@@ -32,15 +39,19 @@ router.post('/', async (req, res) => {
     // Check if there's a pending payment with same transaction ID (prevent duplicate submissions)
     const duplicateTransaction = await Payment.findOne({ transactionId });
     if (duplicateTransaction) {
-      log('⚠️ Duplicate transaction ID attempted:', transactionId);
+      console.log('⚠️ Duplicate transaction ID attempted:', transactionId);
       
       if (duplicateTransaction.status === 'approved') {
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('');
         return res.status(200).json({ 
           message: 'Payment already processed! Content is unlocked.',
           alreadyPaid: true,
           payment: duplicateTransaction
         });
       } else {
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('');
         return res.status(400).json({ 
           message: 'This transaction ID has already been used. Please use a different transaction ID.'
         });
@@ -57,7 +68,17 @@ router.post('/', async (req, res) => {
     });
     await newPayment.save();
 
-    log('✅ Payment auto-approved and saved:', transactionId);
+    console.log('✅✅✅ PAYMENT AUTO-APPROVED AND SAVED');
+    console.log('Saved payment:', {
+      _id: newPayment._id,
+      userId: newPayment.userId,
+      contentId: newPayment.contentId,
+      transactionId: newPayment.transactionId,
+      status: newPayment.status
+    });
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('');
+    
     return res.status(201).json({ 
       message: 'Payment approved successfully! Content unlocked instantly.',
       alreadyPaid: false,
@@ -65,7 +86,9 @@ router.post('/', async (req, res) => {
     });
   } catch (err) {
     console.error('❌ Error saving payment:', err);
-    return res.status(500).json({ message: 'Server error' });
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('');
+    return res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
@@ -73,9 +96,16 @@ router.post('/', async (req, res) => {
 router.get('/check', async (req, res) => {
   const { userId, contentId } = req.query;
   try {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🔍 /payments/check CALLED');
+    console.log('Query params:', { userId, contentId });
+    
     if (!userId || !contentId) {
+      console.log('❌ Missing parameters!');
       return res.status(400).json({ message: 'Missing query parameters' });
     }
+
+    console.log(`📡 Searching for payment: userId=${userId}, contentId=${contentId}, status=approved`);
 
     // Only check for approved payments for content unlock
     const payment = await Payment.findOne({ 
@@ -84,10 +114,41 @@ router.get('/check', async (req, res) => {
       status: 'approved' 
     });
     
-    return res.status(200).json({ paid: !!payment });
+    if (payment) {
+      console.log('✅ PAYMENT FOUND:', {
+        _id: payment._id,
+        userId: payment.userId,
+        contentId: payment.contentId,
+        transactionId: payment.transactionId,
+        status: payment.status,
+        createdAt: payment.createdAt
+      });
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('');
+      return res.status(200).json({ paid: true, payment: payment });
+    } else {
+      console.log('❌ NO PAYMENT FOUND');
+      
+      // Debug: Check if ANY payment exists for this user-content combo
+      const anyPayment = await Payment.findOne({ userId, contentId });
+      if (anyPayment) {
+        console.log('⚠️ Payment exists but status is NOT approved:', {
+          status: anyPayment.status,
+          transactionId: anyPayment.transactionId
+        });
+      } else {
+        console.log('⚠️ NO PAYMENT exists at all for this user-content combo');
+      }
+      
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('');
+      return res.status(200).json({ paid: false });
+    }
   } catch (err) {
     console.error('❌ Error checking payment:', err);
-    return res.status(500).json({ message: 'Server error' });
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('');
+    return res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
