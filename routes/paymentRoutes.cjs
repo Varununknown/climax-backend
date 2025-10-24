@@ -30,27 +30,19 @@ router.post('/', async (req, res) => {
     if (existing) {
       console.log('✅ Payment already exists:', existing.transactionId, 'Status:', existing.status);
       
-      // If payment is already approved, treat as success
-      if (existing.status === 'approved') {
-        console.log('✅✅✅ PAYMENT IS ALREADY APPROVED - Returning 200 with paid: true');
-        console.log('═══════════════════════════════════════════════════════');
-        console.log('');
-        return res.status(200).json({ 
-          message: 'Content already unlocked! You have access to watch this content.',
-          alreadyPaid: true,
-          paid: true,  // ✅ CRITICAL: Add this for verification
-          payment: existing
-        });
+      // If not approved yet, auto-approve NOW for instant unlock
+      if (existing.status !== 'approved') {
+        existing.status = 'approved';
+        await existing.save();
+        console.log('🔄 Existing payment upgraded to APPROVED');
       }
-      
-      // If payment exists but not approved yet, inform user
-      console.log('⚠️ Payment exists but not approved yet (status:', existing.status + ')');
+      console.log('✅✅✅ Returning paid:true for existing approved payment');
       console.log('═══════════════════════════════════════════════════════');
       console.log('');
       return res.status(200).json({ 
-        message: 'Payment already submitted and is being processed.',
-        alreadyPaid: false,
-        paid: false,
+        message: 'Content unlocked. Payment approved.',
+        alreadyPaid: true,
+        paid: true,
         payment: existing
       });
     }
