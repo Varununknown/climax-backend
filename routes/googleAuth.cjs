@@ -5,15 +5,19 @@ const User = require('../models/User.cjs'); // adjust path as needed
 
 const router = express.Router();
 
-const client = new OAuth2Client(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
-
 // Helper function to handle Google authentication
 const handleGoogleAuth = async (code) => {
   console.log('🔐 handleGoogleAuth - Starting token exchange...');
+  console.log('📋 Using GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? '✅ Set' : '❌ NOT SET');
+  console.log('📋 Using GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? '✅ Set' : '❌ NOT SET');
+  console.log('📋 Using GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI);
+  
+  // Create client fresh each time to ensure env vars are loaded
+  const client = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI
+  );
   
   // Exchange code for tokens
   const { tokens } = await client.getToken(code);
