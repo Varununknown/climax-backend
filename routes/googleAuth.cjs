@@ -70,7 +70,7 @@ const handleGoogleAuth = async (code) => {
   );
   console.log('🎟️ JWT token created');
 
-  return { token, user: { _id: user._id, name: user.name, email: user.email, role: user.role, premium: user.premium } };
+  return { token, user: { id: user._id, name: user.name, email: user.email, role: user.role, premium: user.premium } };
 };
 
 // GET endpoint for OAuth redirect (original flow)
