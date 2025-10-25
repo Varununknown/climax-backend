@@ -93,6 +93,11 @@ router.get('/google/callback', async (req, res) => {
 
 // POST endpoint for frontend AJAX calls (new flow)
 router.post('/google/callback', async (req, res) => {
+  // 🔧 Explicit CORS headers for this endpoint
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
   const { code } = req.body;
 
   if (!code) {

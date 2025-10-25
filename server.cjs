@@ -18,7 +18,7 @@ const payuRoutes = require('./routes/payuRoutes.cjs'); // ✅ PayU Gateway
 const app = express();
 
 // =======================
-// ✅ CORS Middleware Setup
+// ✅ CORS Middleware Setup (AGGRESSIVE - Allow all for production)
 // =======================
 const allowedOrigins = [
   'http://localhost:5173',
@@ -28,38 +28,32 @@ const allowedOrigins = [
   'https://watchclimax.vercel.app',
   'https://climaxott.vercel.app',
   'https://climax-fullstack.onrender.com',
-  // Allow any Vercel deployment
 ];
 
+// 🔥 IMPORTANT: CORS MUST come BEFORE routes
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow no origin (mobile apps, curl requests)
-      if (!origin) {
-        return callback(null, true);
-      }
-      
-      // PRODUCTION SAFE: Allow all Vercel and Render deployments
-      // This is safe because we control these platforms
-      if (origin.includes('vercel.app') || origin.includes('onrender.com') || origin.includes('localhost')) {
-        return callback(null, true);
-      }
-      
-      // Allow specific origins
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      
-      // For any other origin, allow it (we can restrict later if needed)
-      console.warn(`⚠️  CORS: Allowing origin ${origin}`);
-      return callback(null, true);
-    },
-    credentials: true,
+    origin: '*', // Allow all origins for now (we control the backend)
+    credentials: false, // Set to false when using '*'
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     maxAge: 3600,
   })
 );
+
+// 🔧 Additional explicit CORS headers for troublesome browsers
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Max-Age', '3600');
+  
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 app.use(express.json());
 
