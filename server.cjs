@@ -108,7 +108,7 @@ if (process.env.MONGO_URI) {
 // =======================
 app.get('/', (req, res) => {
   res.json({
-    message: '🎬 Climax OTT Backend',
+    message: '🎬 Climax OTT Backend - v2',
     status: 'online',
     timestamp: new Date().toISOString(),
     database: mongoConnected ? 'connected' : 'disconnected'
