@@ -15,12 +15,29 @@ const UserSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true
+    required: false, // Not required for OAuth users
+    default: ''
   },
   role: {
     type: String,
     enum: ['user', 'admin'],
     default: 'user'
+  },
+  googleId: {
+    type: String,
+    default: null
+  },
+  profileImage: {
+    type: String,
+    default: null
+  },
+  premium: {
+    type: Boolean,
+    default: false
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
 });
 
