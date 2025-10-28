@@ -14,6 +14,8 @@ const contentRoutes = require('./routes/contentRoutes.cjs');
 const paymentRoutes = require('./routes/paymentRoutes.cjs');
 const paymentSettingsRoutes = require('./routes/paymentSettingsRoutes.cjs'); // ✅ NEW
 const payuRoutes = require('./routes/payuRoutes.cjs'); // ✅ PayU Gateway
+const participationRoutes = require('./routes/participationRoutes.cjs'); // ✅ Participate & Win
+const quizRoutes = require('./routes/quizRoutes.cjs'); // ✅ Quiz System - Separate
 
 const app = express();
 
@@ -121,6 +123,8 @@ app.use('/api/contents', contentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
 app.use('/api/payu', payuRoutes); // ✅ PayU Gateway
+app.use('/api/participation', participationRoutes); // ✅ Participate & Win
+app.use('/api/quiz', quizRoutes); // ✅ Quiz System - Completely Separate
 
 // CDN-optimized video endpoint for super fast delivery
 app.get('/api/video/:id', async (req, res) => {
