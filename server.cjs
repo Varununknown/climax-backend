@@ -127,6 +127,7 @@ app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
 app.use('/api/payu', payuRoutes); // ✅ PayU Gateway
 app.use('/api/participation', participationRoutes); // ✅ Participate & Win
 app.use('/api/quiz', quizRoutes); // ✅ Quiz System - Completely Separate
+console.log('✅ Quiz routes registered at /api/quiz');
 
 // CDN-optimized video endpoint for super fast delivery
 app.get('/api/video/:id', async (req, res) => {
