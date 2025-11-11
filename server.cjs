@@ -63,38 +63,64 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 // =======================
-// ✅ MongoDB Connection (Optimized for free hosting)
+// ✅ MongoDB Connection (Optimized with AGGRESSIVE RETRY LOGIC)
 // =======================
 let mongoConnected = false;
 
-if (process.env.MONGO_URI) {
-  mongoose.connect(process.env.MONGO_URI, {
-    // Modern Mongoose options (v6+)
-    maxPoolSize: 5, // Limit connection pool for free tiers
-    serverSelectionTimeoutMS: 8000, // Fail fast if DB not reachable
-    socketTimeoutMS: 45000, // Reasonable socket timeout
-  })
-    .then(() => {
-      mongoConnected = true;
-      console.log('✅ Connected to MongoDB Atlas');
+async function connectToMongoDB(attempt = 1, maxAttempts = 5) {
+  try {
+    console.log(`\n🔌 MongoDB Connection Attempt ${attempt}/${maxAttempts}...`);
+    
+    await mongoose.connect(process.env.MONGO_URI, {
+      // Modern Mongoose options (v6+)
+      maxPoolSize: 10, // Increased for better concurrency
+      serverSelectionTimeoutMS: 10000, // Give more time for first connection
+      socketTimeoutMS: 45000,
+      retryWrites: true,
+      retryReads: true,
+    });
+
+    mongoConnected = true;
+    console.log('✅ Connected to MongoDB Atlas - READY FOR ACTION!');
+    
+    // Auto-initialize database with sample content if empty
+    console.log('🚀 Auto-initializing database with content...');
+    initializeDatabase().catch(err => {
+      console.error('⚠️  Database initialization warning:', err.message);
+    });
+
+    return true;
+  } catch (err) {
+    console.error(`❌ Connection attempt ${attempt} failed:`, err.message);
+    
+    if (attempt < maxAttempts) {
+      const waitTime = Math.min(5000 * Math.pow(2, attempt - 1), 30000); // Exponential backoff
+      console.log(`⏳ Retrying in ${waitTime / 1000} seconds... (${attempt}/${maxAttempts})`);
+      console.log('💡 Waiting for MongoDB Atlas to be ready...\n');
       
-      // Auto-initialize database with sample content if empty
-      console.log('🚀 Auto-initializing database...');
-      initializeDatabase().catch(err => {
-        console.error('⚠️  Database initialization warning:', err.message);
-        // Don't fail startup if initialization fails
-      });
-    })
-    .catch(err => {
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      return connectToMongoDB(attempt + 1, maxAttempts);
+    } else {
       mongoConnected = false;
-      console.error('❌ MongoDB connection error:', err.message);
-      console.error('⚠️  IMPORTANT: Add your IP to MongoDB Atlas whitelist:');
+      console.error('\n❌ CRITICAL: Failed to connect to MongoDB after 5 attempts');
+      console.error('⚠️  Your app will work for API requests but NO database features');
+      console.error('\n🔧 Fix this by:');
       console.error('   1. Go to: https://cloud.mongodb.com/');
       console.error('   2. Select cluster "ott"');
       console.error('   3. Network Access → IP Whitelist');
-      console.error('   4. Add IP: 0.0.0.0/0 (Allow access from anywhere)');
-      console.error('   5. Or add your specific IP address');
-    });
+      console.error('   4. Add your IP: 0.0.0.0/0 (Allow all)');
+      console.error('   5. Wait 2-3 minutes for change to apply');
+      console.error('   6. Restart this backend server\n');
+      return false;
+    }
+  }
+}
+
+// Start MongoDB connection with retries
+if (process.env.MONGO_URI) {
+  connectToMongoDB().catch(err => {
+    console.error('❌ Fatal MongoDB connection error:', err.message);
+  });
 } else {
   console.warn('⚠️  WARNING: MONGO_URI environment variable not set');
   console.warn('   Database features will not be available');

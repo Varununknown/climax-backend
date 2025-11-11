@@ -3,10 +3,38 @@ const router = express.Router();
 const Content = require('../models/Content.cjs');
 const { optimizeVideoUrl, generateAdaptiveUrls, prewarmCDNCache } = require('../utils/cdnHelper.cjs');
 
-// GET all contents with CDN optimization
+// GET all contents with CDN optimization & RETRY LOGIC
 router.get('/', async (req, res) => {
   try {
-    const contents = await Content.find().sort({ createdAt: -1 });
+    console.log('📊 GET /contents - Fetching all items...');
+    
+    // RETRY LOGIC: Try 5 times with delays
+    let contents = null;
+    
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        console.log(`🔄 List attempt ${attempt}/5...`);
+        contents = await Content.find().sort({ createdAt: -1 });
+        
+        if (contents !== null) {
+          console.log(`✅ Fetched ${contents.length} items on attempt ${attempt}`);
+          break;
+        } else if (attempt < 5) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (err) {
+        console.error(`❌ Attempt ${attempt} failed:`, err.message);
+        if (attempt < 5) {
+          const waitTime = 500 * attempt;
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+    }
+    
+    if (!contents) {
+      console.error('❌ Failed to fetch contents after 5 attempts');
+      return res.status(500).json({ error: 'Database connection failed' });
+    }
     
     console.log(`📊 GET /contents: Returning ${contents.length} items`);
     contents.forEach((c, i) => {
@@ -22,11 +50,12 @@ router.get('/', async (req, res) => {
     
     res.json(optimizedContents);
   } catch (err) {
+    console.error('❌ Content list error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ GET content by ID with ULTRA-FAST CDN optimization & RETRY LOGIC
+// ✅ GET content by ID with ULTRA-FAST CDN optimization & AGGRESSIVE RETRY LOGIC
 router.get('/:id', async (req, res) => {
   try {
     // Validate and sanitize ID
@@ -44,31 +73,41 @@ router.get('/:id', async (req, res) => {
     
     console.log('🔍 Retrieving content ID:', id);
     
-    // RETRY LOGIC: Try 3 times with 1-second delays
+    // AGGRESSIVE RETRY LOGIC: Try 5 times with increasing delays
     let content = null;
+    let lastError = null;
     
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= 5; attempt++) {
       try {
-        console.log(`🔄 Fetch attempt ${attempt}/3...`);
+        console.log(`🔄 Fetch attempt ${attempt}/5...`);
         content = await Content.findById(id);
         
         if (content) {
-          console.log(`✅ Content found on attempt ${attempt}`);
+          console.log(`✅ Content found on attempt ${attempt}: "${content.title}"`);
           break;
-        } else if (attempt < 3) {
-          console.log(`⏳ Content not found, waiting 1 second before retry ${attempt}/3...`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+          if (attempt < 5) {
+            const waitTime = 500 * attempt;
+            console.log(`⏳ Not found yet, waiting ${waitTime}ms before retry ${attempt}/5...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
         }
       } catch (err) {
+        lastError = err;
         console.error(`❌ Attempt ${attempt} failed:`, err.message);
-        if (attempt < 3) {
-          console.log(`⏳ Connection error, waiting 1 second before retry ${attempt}/3...`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        if (attempt < 5) {
+          const waitTime = 500 * attempt;
+          console.log(`⏳ Connection error, waiting ${waitTime}ms before retry ${attempt}/5...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
     }
     
     if (!content) {
+      console.error(`❌ Content NOT found after 5 attempts. ID: ${id}`);
+      if (lastError) {
+        console.error(`   Last error: ${lastError.message}`);
+      }
       return res.status(404).json({ message: 'Content not found' });
     }
     
@@ -97,6 +136,7 @@ router.get('/:id', async (req, res) => {
     
     res.json(optimizedContent);
   } catch (err) {
+    console.error('❌ Content fetch error:', err.message);
     res.status(500).json({ message: 'Server error' });
   }
 });
