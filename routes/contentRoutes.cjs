@@ -26,7 +26,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ✅ GET content by ID with ULTRA-FAST CDN optimization  
+// ✅ GET content by ID with ULTRA-FAST CDN optimization & RETRY LOGIC
 router.get('/:id', async (req, res) => {
   try {
     // Validate and sanitize ID
@@ -44,7 +44,30 @@ router.get('/:id', async (req, res) => {
     
     console.log('🔍 Retrieving content ID:', id);
     
-    const content = await Content.findById(id);
+    // RETRY LOGIC: Try 3 times with 1-second delays
+    let content = null;
+    
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🔄 Fetch attempt ${attempt}/3...`);
+        content = await Content.findById(id);
+        
+        if (content) {
+          console.log(`✅ Content found on attempt ${attempt}`);
+          break;
+        } else if (attempt < 3) {
+          console.log(`⏳ Content not found, waiting 1 second before retry ${attempt}/3...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } catch (err) {
+        console.error(`❌ Attempt ${attempt} failed:`, err.message);
+        if (attempt < 3) {
+          console.log(`⏳ Connection error, waiting 1 second before retry ${attempt}/3...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    }
+    
     if (!content) {
       return res.status(404).json({ message: 'Content not found' });
     }
@@ -272,23 +295,42 @@ router.put('/:id', async (req, res) => {
     if (updateData.thumbnail) updateData.thumbnail = updateData.thumbnail.trim();
     if (updateData.videoUrl) updateData.videoUrl = updateData.videoUrl.trim();
 
-    console.log('✅ All validations passed, finding and updating content...');
+    console.log('✅ All validations passed, updating content...');
     
-    // Try to find the content first
-    const contentBefore = await Content.findById(id);
-    console.log('🔍 Content lookup result:', contentBefore ? `Found: ${contentBefore.title}` : 'NOT FOUND');
+    // RETRY LOGIC: Try 3 times with 1-second delays (handles slow MongoDB connections)
+    let updated = null;
+    let lastError = null;
     
-    if (!contentBefore) {
-      console.log('❌ Content not found with ID:', id);
-      console.log('⚠️ Available contents:', (await Content.find({}, 'title _id')).slice(0, 5));
-      return res.status(404).json({ error: 'Content not found' });
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`� Update attempt ${attempt}/3...`);
+        updated = await Content.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+        
+        if (updated) {
+          console.log(`✅ Content updated on attempt ${attempt}`);
+          console.log('✅ Content updated successfully:', updated.title, '(ID:', updated._id, ')');
+          console.log('📤 Sending updated content as response...');
+          return res.json(updated);
+        } else {
+          if (attempt < 3) {
+            console.log(`⏳ Content not found, waiting 1 second before retry ${attempt}/3...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      } catch (err) {
+        console.error(`❌ Attempt ${attempt} failed:`, err.message);
+        lastError = err;
+        if (attempt < 3) {
+          console.log(`⏳ Connection error, waiting 1 second before retry ${attempt}/3...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
     }
     
-    const updated = await Content.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
-    
-    console.log('✅ Content updated successfully:', updated.title, '(ID:', updated._id, ')');
-    console.log('📤 Sending updated content as response...');
-    res.json(updated);
+    // If we get here, all attempts failed
+    console.log('❌ Content not found with ID after 3 attempts:', id);
+    console.log('⚠️ Last error:', lastError ? lastError.message : 'Not found');
+    return res.status(404).json({ error: 'Content not found' });
   } catch (err) {
     console.error('❌ Content update error:', err);
     console.error('❌ Error type:', err.constructor.name);

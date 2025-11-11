@@ -18,6 +18,7 @@ const paymentSettingsRoutes = require('./routes/paymentSettingsRoutes.cjs'); // 
 const payuRoutes = require('./routes/payuRoutes.cjs'); // ✅ PayU Gateway
 const participationRoutes = require('./routes/participationRoutes.cjs'); // ✅ Participate & Win
 const quizRoutes = require('./routes/quizRoutes.cjs'); // ✅ Quiz System - Separate
+const initializeDatabase = require('./initialize-db.cjs'); // ✅ Auto-initialize database
 
 const app = express();
 
@@ -76,6 +77,13 @@ if (process.env.MONGO_URI) {
     .then(() => {
       mongoConnected = true;
       console.log('✅ Connected to MongoDB Atlas');
+      
+      // Auto-initialize database with sample content if empty
+      console.log('🚀 Auto-initializing database...');
+      initializeDatabase().catch(err => {
+        console.error('⚠️  Database initialization warning:', err.message);
+        // Don't fail startup if initialization fails
+      });
     })
     .catch(err => {
       mongoConnected = false;
@@ -159,10 +167,46 @@ app.get('/api/video/:id', async (req, res) => {
 });
 
 // =======================
-// ✅ Start Server
+// ✅ Start Server (only if run directly, not when imported)
 // =======================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 API endpoints available at http://localhost:${PORT}/api/`);
-});
+
+// Only start server if this file is run directly (not imported by server.js)
+if (require.main === module) {
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📊 API endpoints available at http://localhost:${PORT}/api/`);
+  });
+
+  // Handle graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('📛 SIGTERM received, shutting down gracefully...');
+    server.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', () => {
+    console.log('📛 SIGINT received, shutting down gracefully...');
+    server.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  });
+
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (err) => {
+    console.error('❌ Uncaught Exception:', err);
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  });
+} else {
+  // When imported by server.js, just log success
+  console.log('✅ Backend module loaded successfully, exporting Express app');
+}
+
+// Export the Express app for use by server.js
+module.exports = app;
