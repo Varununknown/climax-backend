@@ -16,6 +16,7 @@ const contentRoutes = require('./routes/contentRoutes.cjs');
 const paymentRoutes = require('./routes/paymentRoutes.cjs');
 const paymentSettingsRoutes = require('./routes/paymentSettingsRoutes.cjs'); // ✅ NEW
 const payuRoutes = require('./routes/payuRoutes.cjs'); // ✅ PayU Gateway
+const bannerRoutes = require('./routes/bannerRoutes.cjs'); // ✅ NEW - Banners/Ads
 const participationRoutes = require('./routes/participationRoutes.cjs'); // ✅ Participate & Win
 const quizRoutes = require('./routes/quizRoutes.cjs'); // ✅ Quiz System - Separate
 const initializeDatabase = require('./initialize-db.cjs'); // ✅ Auto-initialize database
@@ -155,6 +156,7 @@ app.get('/api/health', (req, res) => {
 // =======================
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', googleAuthRoutes);  // <-- Add Google auth routes here
+app.use('/api/banners', bannerRoutes); // ✅ BANNER/ADS MANAGEMENT
 app.use('/api/contents', contentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
