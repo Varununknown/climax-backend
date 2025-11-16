@@ -19,6 +19,13 @@ const contentSchema = new mongoose.Schema({
     enum: ['English', 'Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'Bengali', 'Marathi', 'Gujarati', 'Punjabi'],
     trim: true
   },
+  // Fan Fest Sponsorship Details
+  fanFestSponsor: {
+    name: { type: String, default: '' },
+    logo: { type: String, default: '' }, // Image URL
+    tagline: { type: String, default: '' }, // Sponsor message/offer
+    description: { type: String, default: '' } // Brief sponsor description
+  },
   createdAt: {
     type: Date,
     default: () => Date.now()

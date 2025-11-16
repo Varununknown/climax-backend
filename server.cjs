@@ -16,9 +16,12 @@ const contentRoutes = require('./routes/contentRoutes.cjs');
 const paymentRoutes = require('./routes/paymentRoutes.cjs');
 const paymentSettingsRoutes = require('./routes/paymentSettingsRoutes.cjs'); // ✅ NEW
 const payuRoutes = require('./routes/payuRoutes.cjs'); // ✅ PayU Gateway
+const phonepeRoutes = require('./routes/phonepeRoutes.cjs'); // ✅ PhonePe Gateway
 const bannerRoutes = require('./routes/bannerRoutes.cjs'); // ✅ NEW - Banners/Ads
+const exploreRoutes = require('./routes/exploreRoutes.cjs'); // ✅ NEW - Explore Section Items
 const participationRoutes = require('./routes/participationRoutes.cjs'); // ✅ Participate & Win
 const quizRoutes = require('./routes/quizRoutes.cjs'); // ✅ Quiz System - Separate
+const settingsRoutes = require('./routes/settingsRoutes.cjs'); // ✅ Settings Management
 const initializeDatabase = require('./initialize-db.cjs'); // ✅ Auto-initialize database
 
 const app = express();
@@ -161,9 +164,12 @@ app.use('/api/contents', contentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
 app.use('/api/payu', payuRoutes); // ✅ PayU Gateway
+app.use('/api/phonepe', phonepeRoutes); // ✅ PhonePe Gateway
 app.use('/api/participation', participationRoutes); // ✅ Participate & Win
 app.use('/api/quiz', quizRoutes); // ✅ Quiz System - Completely Separate
+app.use('/api/settings', settingsRoutes); // ✅ Settings Management
 console.log('✅ Quiz routes registered at /api/quiz');
+console.log('✅ Settings routes registered at /api/settings');
 
 // CDN-optimized video endpoint for super fast delivery
 app.get('/api/video/:id', async (req, res) => {
