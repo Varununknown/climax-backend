@@ -16,7 +16,7 @@ const contentRoutes = require('./routes/contentRoutes.cjs');
 const paymentRoutes = require('./routes/paymentRoutes.cjs');
 const paymentSettingsRoutes = require('./routes/paymentSettingsRoutes.cjs'); // ✅ NEW
 const phonepeRoutes = require('./routes/phonepeRoutes.cjs'); // ✅ PhonePe Gateway
-const instamojoRoutes = require('./routes/instamojo.cjs'); // ✅ Instamojo Gateway
+// const instamojoRoutes = require('./routes/instamojo.cjs'); // ✅ Instamojo Gateway - USING INLINE ROUTES
 const bannerRoutes = require('./routes/bannerRoutes.cjs'); // ✅ NEW - Banners/Ads
 const exploreRoutes = require('./routes/exploreRoutes.cjs'); // ✅ NEW - Explore Section Items
 const participationRoutes = require('./routes/participationRoutes.cjs'); // ✅ Participate & Win
@@ -166,7 +166,7 @@ app.use('/api/contents', contentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
 app.use('/api/phonepe', phonepeRoutes); // ✅ PhonePe Gateway
-app.use('/api/instamojo', instamojoRoutes); // ✅ Instamojo Gateway
+// app.use('/api/instamojo', instamojoRoutes); // ✅ Instamojo Gateway - USING INLINE ROUTES
 app.use('/api/participation', participationRoutes); // ✅ Participate & Win
 app.use('/api/quiz', quizRoutes); // ✅ Quiz System - Completely Separate
 app.use('/api/settings', settingsRoutes); // ✅ Settings Management
@@ -201,6 +201,216 @@ app.get('/api/video/:id', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// =======================
+// ✅ INLINE INSTAMOJO ROUTES
+// =======================
+console.log('⚡ Setting up INLINE Instamojo routes...');
+
+const axios = require('axios');
+const INSTAMOJO_API_KEY = process.env.INSTAMOJO_API_KEY || '';
+const INSTAMOJO_AUTH_TOKEN = process.env.INSTAMOJO_AUTH_TOKEN || '';
+const INSTAMOJO_SALT = process.env.INSTAMOJO_SALT || '';
+const INSTAMOJO_API_URL = 'https://www.instamojo.com/api/1.1/';
+
+const instamojoAPI = axios.create({
+  baseURL: INSTAMOJO_API_URL,
+  headers: {
+    'X-Api-Key': INSTAMOJO_API_KEY,
+    'X-Auth-Token': INSTAMOJO_AUTH_TOKEN,
+  },
+  timeout: 30000,
+});
+
+console.log('🔐 Instamojo Inline - API Key:', INSTAMOJO_API_KEY ? '✅' : '❌');
+console.log('🔐 Instamojo Inline - Auth Token:', INSTAMOJO_AUTH_TOKEN ? '✅' : '❌');
+
+// POST /api/instamojo/create
+app.post('/api/instamojo/create', async (req, res) => {
+  try {
+    const { userId, contentId, amount, purpose } = req.body;
+    console.log('📡 Instamojo CREATE endpoint hit - userId:', userId, 'contentId:', contentId);
+
+    if (!userId || !contentId || !amount) {
+      return res.status(400).json({ error: 'Missing required fields: userId, contentId, amount' });
+    }
+
+    const User = require('./models/User.cjs');
+    const Content = require('./models/Content.cjs');
+    const Payment = require('./models/Payment.cjs');
+
+    // Verify user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Verify content exists
+    const content = await Content.findById(contentId);
+    if (!content) {
+      return res.status(404).json({ error: 'Content not found' });
+    }
+
+    const amountInRupees = (amount / 100).toFixed(2);
+
+    const paymentRequestData = {
+      purpose: purpose || `Payment for ${content.title}`,
+      amount: amountInRupees,
+      buyer_name: user.name || 'Customer',
+      email: user.email || 'user@climax.app',
+      phone: user.phone || '9000000000',
+      redirect_url: `${process.env.FRONTEND_URL || 'https://climaxott.vercel.app'}/payment/success`,
+      send_email: false,
+      send_sms: false,
+      webhook: `${process.env.BACKEND_URL || 'https://climax-fullstack.onrender.com'}/api/instamojo/webhook`,
+    };
+
+    console.log('📡 Sending to Instamojo API:', paymentRequestData);
+
+    const response = await instamojoAPI.post('payment-requests/', paymentRequestData);
+    const paymentRequest = response.data.payment_request;
+
+    const payment = new Payment({
+      userId,
+      contentId,
+      amount,
+      status: 'pending',
+      gateway: 'instamojo',
+      transactionId: paymentRequest.id,
+      paymentUrl: paymentRequest.longurl,
+    });
+
+    await payment.save();
+    console.log('✅ Instamojo payment created:', paymentRequest.id);
+
+    res.json({
+      success: true,
+      paymentUrl: paymentRequest.longurl,
+      transactionId: paymentRequest.id,
+      message: 'Payment request created successfully',
+    });
+  } catch (error) {
+    console.error('❌ Instamojo CREATE error:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to create payment request',
+      details: error.response?.data?.message || error.message,
+    });
+  }
+});
+
+// GET /api/instamojo/status/:transactionId
+app.get('/api/instamojo/status/:transactionId', async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+    console.log('🔍 Instamojo STATUS check:', transactionId);
+
+    const response = await instamojoAPI.get(`payment-requests/${transactionId}/`);
+    const paymentRequest = response.data.payment_request;
+
+    res.json({
+      status: paymentRequest.status,
+      amount: paymentRequest.amount,
+      purpose: paymentRequest.purpose,
+      email: paymentRequest.email,
+    });
+  } catch (error) {
+    console.error('❌ Instamojo STATUS error:', error.message);
+    res.status(500).json({ error: 'Failed to check payment status' });
+  }
+});
+
+// POST /api/instamojo/webhook
+app.post('/api/instamojo/webhook', async (req, res) => {
+  try {
+    const { payment_request_id, status } = req.body;
+    console.log('🔔 Instamojo WEBHOOK received:', payment_request_id, status);
+
+    const Payment = require('./models/Payment.cjs');
+    const User = require('./models/User.cjs');
+
+    const payment = await Payment.findOne({ transactionId: payment_request_id });
+
+    if (!payment) {
+      console.warn('⚠️ Payment not found:', payment_request_id);
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    if (status === 'completed') {
+      payment.status = 'success';
+      await payment.save();
+
+      const user = await User.findById(payment.userId);
+      if (user) {
+        if (!user.purchasedContent) {
+          user.purchasedContent = [];
+        }
+        if (!user.purchasedContent.includes(payment.contentId)) {
+          user.purchasedContent.push(payment.contentId);
+          await user.save();
+        }
+      }
+
+      console.log('✅ Instamojo payment confirmed');
+    } else {
+      payment.status = 'failed';
+      await payment.save();
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Instamojo WEBHOOK error:', error.message);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+// POST /api/instamojo/verify
+app.post('/api/instamojo/verify', async (req, res) => {
+  try {
+    const { transactionId, userId, contentId } = req.body;
+    console.log('🔍 Instamojo VERIFY:', transactionId);
+
+    const Payment = require('./models/Payment.cjs');
+    const User = require('./models/User.cjs');
+
+    const payment = await Payment.findOne({
+      transactionId,
+      userId,
+      contentId,
+      status: 'success',
+    });
+
+    if (payment) {
+      return res.json({ verified: true, message: 'Payment verified' });
+    }
+
+    const response = await instamojoAPI.get(`payment-requests/${transactionId}/`);
+    const paymentRequest = response.data.payment_request;
+
+    if (paymentRequest.status === 'completed') {
+      const dbPayment = await Payment.findOne({ transactionId });
+      if (dbPayment) {
+        dbPayment.status = 'success';
+        await dbPayment.save();
+
+        const user = await User.findById(userId);
+        if (user && !user.purchasedContent?.includes(contentId)) {
+          user.purchasedContent = user.purchasedContent || [];
+          user.purchasedContent.push(contentId);
+          await user.save();
+        }
+      }
+
+      return res.json({ verified: true, message: 'Payment verified' });
+    }
+
+    res.json({ verified: false, message: 'Payment not completed' });
+  } catch (error) {
+    console.error('❌ Instamojo VERIFY error:', error.message);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+console.log('✅ INLINE Instamojo routes registered: /api/instamojo/*');
 
 // =======================
 // ✅ Start Server (only if run directly, not when imported)
