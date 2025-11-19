@@ -1,27 +1,55 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
-const Payment = require('../models/Payment.cjs');
-const User = require('../models/User.cjs');
-const Content = require('../models/Content.cjs');
-const crypto = require('crypto');
+
+// Check if required dependencies are available
+let axios, Payment, User, Content, crypto;
+
+try {
+  axios = require('axios');
+  Payment = require('../models/Payment.cjs');
+  User = require('../models/User.cjs');
+  Content = require('../models/Content.cjs');
+  crypto = require('crypto');
+  console.log('✅ Instamojo route dependencies loaded successfully');
+} catch (err) {
+  console.error('❌ ERROR loading Instamojo dependencies:', err.message);
+  // Return error response for all routes if dependencies fail
+  router.use((req, res) => {
+    res.status(500).json({ error: 'Instamojo service unavailable: ' + err.message });
+  });
+  module.exports = router;
+  throw err; // Crash loudly so we know there's an issue
+}
 
 // Instamojo Configuration
-const INSTAMOJO_API_KEY = process.env.INSTAMOJO_API_KEY;
-const INSTAMOJO_AUTH_TOKEN = process.env.INSTAMOJO_AUTH_TOKEN;
-const INSTAMOJO_SALT = process.env.INSTAMOJO_SALT;
+const INSTAMOJO_API_KEY = process.env.INSTAMOJO_API_KEY || '';
+const INSTAMOJO_AUTH_TOKEN = process.env.INSTAMOJO_AUTH_TOKEN || '';
+const INSTAMOJO_SALT = process.env.INSTAMOJO_SALT || '';
+
+console.log('🔐 Instamojo Configuration:');
+console.log('   API Key:', INSTAMOJO_API_KEY ? '✅ Set' : '❌ NOT SET');
+console.log('   Auth Token:', INSTAMOJO_AUTH_TOKEN ? '✅ Set' : '❌ NOT SET');
+console.log('   Salt:', INSTAMOJO_SALT ? '✅ Set' : '❌ NOT SET');
 
 // Use production URL
 const INSTAMOJO_API_URL = 'https://www.instamojo.com/api/1.1/';
 
-// Axios instance for Instamojo API
-const instamojoAPI = axios.create({
-  baseURL: INSTAMOJO_API_URL,
-  headers: {
-    'X-Api-Key': INSTAMOJO_API_KEY,
-    'X-Auth-Token': INSTAMOJO_AUTH_TOKEN,
-  },
-});
+// Create axios instance with error handling
+let instamojoAPI;
+try {
+  instamojoAPI = axios.create({
+    baseURL: INSTAMOJO_API_URL,
+    headers: {
+      'X-Api-Key': INSTAMOJO_API_KEY,
+      'X-Auth-Token': INSTAMOJO_AUTH_TOKEN,
+    },
+    timeout: 30000,
+  });
+  console.log('✅ Instamojo axios instance created');
+} catch (err) {
+  console.error('❌ Failed to create axios instance:', err.message);
+  throw err;
+}
 
 // ✅ POST - Initiate Payment (Create Payment Request)
 router.post('/create', async (req, res) => {
