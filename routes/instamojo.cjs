@@ -4,30 +4,36 @@ const axios = require('axios');
 const Payment = require('../models/Payment.cjs');
 const User = require('../models/User.cjs');
 const Content = require('../models/Content.cjs');
+const crypto = require('crypto');
 
 // Instamojo Configuration
-const INSTAMOJO_API_KEY = process.env.INSTAMOJO_API_KEY || 'test_key';
-const INSTAMOJO_AUTH_TOKEN = process.env.INSTAMOJO_AUTH_TOKEN || 'test_token';
-const INSTAMOJO_API_URL = process.env.INSTAMOJO_ENV === 'production' 
-  ? 'https://www.instamojo.com/api/1.1/'
-  : 'https://test.instamojo.com/api/1.1/';
+const INSTAMOJO_API_KEY = process.env.INSTAMOJO_API_KEY;
+const INSTAMOJO_AUTH_TOKEN = process.env.INSTAMOJO_AUTH_TOKEN;
+const INSTAMOJO_SALT = process.env.INSTAMOJO_SALT;
 
-const instamojo = axios.create({
+// Use production URL
+const INSTAMOJO_API_URL = 'https://www.instamojo.com/api/1.1/';
+
+// Axios instance for Instamojo API
+const instamojoAPI = axios.create({
   baseURL: INSTAMOJO_API_URL,
   headers: {
-    'X-API-KEY': INSTAMOJO_API_KEY,
-    'X-AUTH-TOKEN': INSTAMOJO_AUTH_TOKEN,
+    'X-Api-Key': INSTAMOJO_API_KEY,
+    'X-Auth-Token': INSTAMOJO_AUTH_TOKEN,
   },
 });
 
-// ✅ POST - Initiate Payment
+// ✅ POST - Initiate Payment (Create Payment Request)
 router.post('/create', async (req, res) => {
   try {
     const { userId, contentId, amount, purpose } = req.body;
 
     if (!userId || !contentId || !amount) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing required fields: userId, contentId, amount' });
     }
+
+    console.log('💳 Creating Instamojo payment request...');
+    console.log('Amount in paise:', amount);
 
     // Verify user exists
     const user = await User.findById(userId);
@@ -41,24 +47,30 @@ router.post('/create', async (req, res) => {
       return res.status(404).json({ error: 'Content not found' });
     }
 
-    console.log('💳 Creating Instamojo payment request...');
+    // Convert paise to rupees
+    const amountInRupees = (amount / 100).toFixed(2);
 
-    // Create request data for Instamojo
-    const paymentData = {
+    // Prepare payment request data for Instamojo
+    const paymentRequestData = {
       purpose: purpose || `Payment for ${content.title}`,
-      amount: (amount / 100).toString(), // Convert paise to rupees
+      amount: amountInRupees,
       buyer_name: user.name || 'Customer',
-      email: user.email,
-      phone: user.phone || '9000000000', // Default phone if not provided
-      redirect_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/success?orderId={id}`,
-      webhook: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/instamojo/webhook`,
-      allow_repeated_payments: false,
+      email: user.email || 'user@climax.app',
+      phone: user.phone || '9000000000',
+      redirect_url: `${process.env.FRONTEND_URL || 'https://climaxott.vercel.app'}/payment/success`,
+      send_email: false,
+      send_sms: false,
+      webhook: `${process.env.BACKEND_URL || 'https://climax-fullstack.onrender.com'}/api/instamojo/webhook`,
     };
 
-    // Create payment request in Instamojo
-    const response = await instamojo.post('payment-requests/', paymentData);
+    console.log('📡 Sending payment request to Instamojo:', paymentRequestData);
 
-    console.log('✅ Payment request created:', response.data);
+    // Create payment request via Instamojo API
+    const response = await instamojoAPI.post('payment-requests/', paymentRequestData);
+
+    console.log('✅ Instamojo payment request created:', response.data);
+
+    const paymentRequest = response.data.payment_request;
 
     // Save payment record to database
     const payment = new Payment({
@@ -67,16 +79,17 @@ router.post('/create', async (req, res) => {
       amount,
       status: 'pending',
       gateway: 'instamojo',
-      transactionId: response.data.payment_request.id,
-      paymentUrl: response.data.payment_request.longurl,
+      transactionId: paymentRequest.id,
+      paymentUrl: paymentRequest.longurl,
     });
 
     await payment.save();
+    console.log('✅ Payment saved to database');
 
     res.json({
       success: true,
-      paymentUrl: response.data.payment_request.longurl,
-      transactionId: response.data.payment_request.id,
+      paymentUrl: paymentRequest.longurl,
+      transactionId: paymentRequest.id,
       message: 'Payment request created successfully',
     });
   } catch (error) {
@@ -93,16 +106,16 @@ router.get('/status/:transactionId', async (req, res) => {
   try {
     const { transactionId } = req.params;
 
-    const response = await instamojo.get(`payment-requests/${transactionId}/`);
+    console.log('🔍 Checking payment status:', transactionId);
 
-    const paymentData = response.data.payment_request;
-    const paymentStatus = paymentData.status === 'completed' ? 'success' : 'pending';
+    const response = await instamojoAPI.get(`payment-requests/${transactionId}/`);
+    const paymentRequest = response.data.payment_request;
 
     res.json({
-      status: paymentStatus,
-      amount: paymentData.amount,
-      purpose: paymentData.purpose,
-      buyerEmail: paymentData.email,
+      status: paymentRequest.status,
+      amount: paymentRequest.amount,
+      purpose: paymentRequest.purpose,
+      email: paymentRequest.email,
     });
   } catch (error) {
     console.error('❌ Status check error:', error.message);
@@ -110,18 +123,25 @@ router.get('/status/:transactionId', async (req, res) => {
   }
 });
 
-// ✅ POST - Webhook Handler (for Instamojo callbacks)
+// ✅ POST - Webhook Handler (Instamojo callbacks)
 router.post('/webhook', async (req, res) => {
   try {
-    const { payment_request_id, status } = req.body;
+    console.log('🔔 Instamojo webhook received');
+    console.log('Request body:', req.body);
 
-    console.log(`🔔 Webhook received: ${payment_request_id} - ${status}`);
+    // Verify webhook signature
+    const { payment_request_id, status, mac } = req.body;
 
-    // Find payment record
+    if (!payment_request_id || !status) {
+      console.warn('⚠️ Missing payment_request_id or status');
+      return res.status(400).json({ error: 'Invalid webhook data' });
+    }
+
+    // Find payment in database
     const payment = await Payment.findOne({ transactionId: payment_request_id });
 
     if (!payment) {
-      console.warn('⚠️ Payment not found in database');
+      console.warn('⚠️ Payment not found in database:', payment_request_id);
       return res.status(404).json({ error: 'Payment not found' });
     }
 
@@ -130,7 +150,7 @@ router.post('/webhook', async (req, res) => {
       payment.status = 'success';
       await payment.save();
 
-      // Add content to user's collection
+      // Unlock content for user
       const user = await User.findById(payment.userId);
       if (user) {
         if (!user.purchasedContent) {
@@ -139,14 +159,15 @@ router.post('/webhook', async (req, res) => {
         if (!user.purchasedContent.includes(payment.contentId)) {
           user.purchasedContent.push(payment.contentId);
           await user.save();
+          console.log('✅ Content unlocked for user');
         }
       }
 
-      console.log('✅ Payment confirmed and content unlocked');
-    } else {
+      console.log('✅ Payment confirmed:', payment_request_id);
+    } else if (status === 'failed' || status === 'expired') {
       payment.status = 'failed';
       await payment.save();
-      console.log('❌ Payment failed');
+      console.log('❌ Payment failed:', payment_request_id);
     }
 
     res.json({ success: true });
@@ -156,12 +177,14 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
-// ✅ POST - Verify Payment (for frontend)
+// ✅ POST - Verify Payment
 router.post('/verify', async (req, res) => {
   try {
     const { transactionId, userId, contentId } = req.body;
 
-    // Check in database first
+    console.log('🔍 Verifying payment:', transactionId);
+
+    // Check database first
     const payment = await Payment.findOne({
       transactionId,
       userId,
@@ -170,19 +193,20 @@ router.post('/verify', async (req, res) => {
     });
 
     if (payment) {
+      console.log('✅ Payment verified from database');
       return res.json({ verified: true, message: 'Payment verified' });
     }
 
     // If not in database, check with Instamojo API
-    const response = await instamojo.get(`payment-requests/${transactionId}/`);
-    const paymentData = response.data.payment_request;
+    const response = await instamojoAPI.get(`payment-requests/${transactionId}/`);
+    const paymentRequest = response.data.payment_request;
 
-    if (paymentData.status === 'completed') {
-      // Update database
-      const payment = await Payment.findOne({ transactionId });
-      if (payment) {
-        payment.status = 'success';
-        await payment.save();
+    if (paymentRequest.status === 'completed') {
+      // Update database and unlock content
+      const dbPayment = await Payment.findOne({ transactionId });
+      if (dbPayment) {
+        dbPayment.status = 'success';
+        await dbPayment.save();
 
         const user = await User.findById(userId);
         if (user && !user.purchasedContent?.includes(contentId)) {
@@ -192,9 +216,11 @@ router.post('/verify', async (req, res) => {
         }
       }
 
+      console.log('✅ Payment verified with Instamojo API');
       return res.json({ verified: true, message: 'Payment verified' });
     }
 
+    console.log('⚠️ Payment not completed');
     res.json({ verified: false, message: 'Payment not completed' });
   } catch (error) {
     console.error('❌ Verification error:', error.message);
