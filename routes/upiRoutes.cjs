@@ -78,7 +78,9 @@ router.post('/verify-upi', async (req, res) => {
   } catch (error) {
     console.error('❌ Verification error:', error.message);
     res.status(500).json({
-      error: 'Failed to verify payment',
+      success: false,
+      error: 'VERIFICATION_ERROR',
+      message: 'Failed to verify payment',
       details: error.message
     });
   }
