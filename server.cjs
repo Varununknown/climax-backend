@@ -15,7 +15,6 @@ const googleAuthRoutes = require('./routes/googleAuth.cjs'); // Added Google Aut
 const contentRoutes = require('./routes/contentRoutes.cjs');
 const paymentRoutes = require('./routes/paymentRoutes.cjs');
 const paymentSettingsRoutes = require('./routes/paymentSettingsRoutes.cjs'); // ✅ NEW
-const payuRoutes = require('./routes/payuRoutes.cjs'); // ✅ PayU Gateway
 const phonepeRoutes = require('./routes/phonepeRoutes.cjs'); // ✅ PhonePe Gateway
 const bannerRoutes = require('./routes/bannerRoutes.cjs'); // ✅ NEW - Banners/Ads
 const exploreRoutes = require('./routes/exploreRoutes.cjs'); // ✅ NEW - Explore Section Items
@@ -163,7 +162,6 @@ app.use('/api/banners', bannerRoutes); // ✅ BANNER/ADS MANAGEMENT
 app.use('/api/contents', contentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
-app.use('/api/payu', payuRoutes); // ✅ PayU Gateway
 app.use('/api/phonepe', phonepeRoutes); // ✅ PhonePe Gateway
 app.use('/api/participation', participationRoutes); // ✅ Participate & Win
 app.use('/api/quiz', quizRoutes); // ✅ Quiz System - Completely Separate
