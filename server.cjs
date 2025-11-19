@@ -16,7 +16,7 @@ const contentRoutes = require('./routes/contentRoutes.cjs');
 const paymentRoutes = require('./routes/paymentRoutes.cjs');
 const paymentSettingsRoutes = require('./routes/paymentSettingsRoutes.cjs'); // ✅ NEW
 const phonepeRoutes = require('./routes/phonepeRoutes.cjs'); // ✅ PhonePe Gateway
-const instamojoRoutes = require('./routes/instamojo.cjs'); // ✅ Instamojo Gateway
+// const instamojoRoutes = require('./routes/instamojo.cjs'); // ✅ Instamojo Gateway - TEMPORARILY DISABLED
 const bannerRoutes = require('./routes/bannerRoutes.cjs'); // ✅ NEW - Banners/Ads
 const exploreRoutes = require('./routes/exploreRoutes.cjs'); // ✅ NEW - Explore Section Items
 const participationRoutes = require('./routes/participationRoutes.cjs'); // ✅ Participate & Win
@@ -164,7 +164,7 @@ app.use('/api/contents', contentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
 app.use('/api/phonepe', phonepeRoutes); // ✅ PhonePe Gateway
-app.use('/api/instamojo', instamojoRoutes); // ✅ Instamojo Gateway
+// app.use('/api/instamojo', instamojoRoutes); // ✅ Instamojo Gateway - TEMPORARILY DISABLED
 app.use('/api/participation', participationRoutes); // ✅ Participate & Win
 app.use('/api/quiz', quizRoutes); // ✅ Quiz System - Completely Separate
 app.use('/api/settings', settingsRoutes); // ✅ Settings Management
