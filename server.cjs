@@ -16,6 +16,7 @@ const contentRoutes = require('./routes/contentRoutes.cjs');
 const paymentRoutes = require('./routes/paymentRoutes.cjs');
 const paymentSettingsRoutes = require('./routes/paymentSettingsRoutes.cjs'); // ✅ NEW
 const phonepeRoutes = require('./routes/phonepeRoutes.cjs'); // ✅ PhonePe Gateway
+const upiRoutes = require('./routes/upiRoutes.cjs'); // ✅ UPI Deep Link Gateway
 // const instamojoRoutes = require('./routes/instamojo.cjs'); // ✅ Instamojo Gateway - USING INLINE ROUTES
 const bannerRoutes = require('./routes/bannerRoutes.cjs'); // ✅ NEW - Banners/Ads
 const exploreRoutes = require('./routes/exploreRoutes.cjs'); // ✅ NEW - Explore Section Items
@@ -166,6 +167,7 @@ app.use('/api/contents', contentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
 app.use('/api/phonepe', phonepeRoutes); // ✅ PhonePe Gateway
+app.use('/api/payments', upiRoutes); // ✅ UPI Deep Link Gateway (uses /api/payments endpoints)
 // app.use('/api/instamojo', instamojoRoutes); // ✅ Instamojo Gateway - USING INLINE ROUTES
 app.use('/api/participation', participationRoutes); // ✅ Participate & Win
 app.use('/api/quiz', quizRoutes); // ✅ Quiz System - Completely Separate
