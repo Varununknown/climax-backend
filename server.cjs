@@ -150,7 +150,9 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     mongo: mongoConnected ? 'connected' : 'disconnected',
-    message: mongoConnected ? 'Database connected' : 'Database disconnected - check IP whitelist'
+    message: mongoConnected ? 'Database connected' : 'Database disconnected - check IP whitelist',
+    instamojo_route_loaded: typeof instamojoRoutes !== 'undefined' ? 'YES' : 'NO',
+    version: 'v2-instamojo-fixed-nov19-2225'
   });
 });
 
