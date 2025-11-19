@@ -164,10 +164,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/auth', googleAuthRoutes);  // <-- Add Google auth routes here
 app.use('/api/banners', bannerRoutes); // ✅ BANNER/ADS MANAGEMENT
 app.use('/api/contents', contentRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ NEW
+app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ Payment Settings
+app.use('/api/payments', upiRoutes); // ✅ UPI Deep Link Gateway - Register FIRST
+app.use('/api/payments', paymentRoutes); // ✅ QR Code Payment Routes - Register SECOND
 app.use('/api/phonepe', phonepeRoutes); // ✅ PhonePe Gateway
-app.use('/api/payments', upiRoutes); // ✅ UPI Deep Link Gateway (uses /api/payments endpoints)
 // app.use('/api/instamojo', instamojoRoutes); // ✅ Instamojo Gateway - USING INLINE ROUTES
 app.use('/api/participation', participationRoutes); // ✅ Participate & Win
 app.use('/api/quiz', quizRoutes); // ✅ Quiz System - Completely Separate
