@@ -30,7 +30,7 @@ router.post('/verify-upi', async (req, res) => {
     // Check if this transaction already exists (must be unique)
     const existingPayment = await Payment.findOne({
       transactionId: transactionId,
-      status: 'success'
+      status: 'approved'
     });
 
     if (existingPayment) {
@@ -47,7 +47,7 @@ router.post('/verify-upi', async (req, res) => {
       userId,
       contentId,
       amount: 0, // Amount will be from content pricing
-      status: 'success',
+      status: 'approved',
       gateway: 'upi',
       transactionId: transactionId,
       createdAt: new Date()
