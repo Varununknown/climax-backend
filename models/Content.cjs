@@ -26,6 +26,9 @@ const contentSchema = new mongoose.Schema({
     tagline: { type: String, default: '' }, // Sponsor message/offer
     description: { type: String, default: '' } // Brief sponsor description
   },
+  // Fan Fest Payment Settings
+  festPaymentEnabled: { type: Boolean, default: false }, // Enable paid participation
+  festParticipationFee: { type: Number, default: 0 }, // Fee amount in rupees
   createdAt: {
     type: Date,
     default: () => Date.now()
