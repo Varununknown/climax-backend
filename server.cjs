@@ -24,7 +24,12 @@ const exploreRoutes = require('./routes/exploreRoutes.cjs'); // ✅ NEW - Explor
 const participationRoutes = require('./routes/participationRoutes.cjs'); // ✅ Participate & Win
 const quizRoutes = require('./routes/quizRoutes.cjs'); // ✅ Quiz System - Separate
 const settingsRoutes = require('./routes/settingsRoutes.cjs'); // ✅ Settings Management
-const razorpayRoutes = require('./routes/razorpayRoutes.cjs'); // ✅ Razorpay Payment Gateway
+let razorpayRoutes = null;
+try {
+  razorpayRoutes = require('./routes/razorpayRoutes.cjs'); // ✅ Razorpay Payment Gateway
+} catch (err) {
+  console.warn('⚠️  Razorpay routes not available:', err.message);
+}
 const initializeDatabase = require('./initialize-db.cjs'); // ✅ Auto-initialize database
 
 const app = express();
@@ -228,7 +233,9 @@ app.use('/api/cashfree', cashfreeRoutes); // ✅ Cashfree Gateway
 app.use('/api/participation', participationRoutes); // ✅ Participate & Win
 app.use('/api/quiz', quizRoutes); // ✅ Quiz System - Completely Separate
 app.use('/api/settings', settingsRoutes); // ✅ Settings Management
-app.use('/api/razorpay', razorpayRoutes); // ✅ Razorpay Payment Gateway
+if (razorpayRoutes) {
+  app.use('/api/razorpay', razorpayRoutes); // ✅ Razorpay Payment Gateway
+}
 console.log('✅ Quiz routes registered at /api/quiz');
 console.log('✅ Settings routes registered at /api/settings');
 
