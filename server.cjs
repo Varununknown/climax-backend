@@ -17,12 +17,14 @@ const paymentRoutes = require('./routes/paymentRoutes.cjs');
 const paymentSettingsRoutes = require('./routes/paymentSettingsRoutes.cjs'); // ✅ NEW
 const phonepeRoutes = require('./routes/phonepeRoutes.cjs'); // ✅ PhonePe Gateway
 const upiRoutes = require('./routes/upiRoutes.cjs'); // ✅ UPI Deep Link Gateway
+const cashfreeRoutes = require('../routes/cashfreeRoutes.cjs'); // ✅ Cashfree Gateway
 // const instamojoRoutes = require('./routes/instamojo.cjs'); // ✅ Instamojo Gateway - USING INLINE ROUTES
 const bannerRoutes = require('./routes/bannerRoutes.cjs'); // ✅ NEW - Banners/Ads
 const exploreRoutes = require('./routes/exploreRoutes.cjs'); // ✅ NEW - Explore Section Items
 const participationRoutes = require('./routes/participationRoutes.cjs'); // ✅ Participate & Win
 const quizRoutes = require('./routes/quizRoutes.cjs'); // ✅ Quiz System - Separate
 const settingsRoutes = require('./routes/settingsRoutes.cjs'); // ✅ Settings Management
+const razorpayRoutes = require('./routes/razorpayRoutes.cjs'); // ✅ Razorpay Payment Gateway
 const initializeDatabase = require('./initialize-db.cjs'); // ✅ Auto-initialize database
 
 const app = express();
@@ -152,8 +154,61 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     mongo: mongoConnected ? 'connected' : 'disconnected',
     message: mongoConnected ? 'Database connected' : 'Database disconnected - check IP whitelist',
-    instamojo_route_loaded: typeof instamojoRoutes !== 'undefined' ? 'YES' : 'NO',
-    version: 'v2-instamojo-fixed-nov19-2225'
+    environment: process.env.NODE_ENV || 'development',
+    version: 'v2-instamojo-fixed-nov19-2225',
+    timestamp: new Date().toISOString(),
+    routes: {
+      auth: 'active',
+      google: 'active',
+      payments: 'active',
+      cashfree: 'active'
+    },
+    envVars: {
+      cashfree_configured: !!process.env.CASHFREE_CLIENT_ID && !!process.env.CASHFREE_SECRET_KEY,
+      jwt_secret: !!process.env.JWT_SECRET,
+      mongo_uri: process.env.MONGO_URI ? 'configured' : 'missing',
+      frontend_url: process.env.FRONTEND_URL || 'not set'
+    }
+  });
+});
+
+app.get('/api/diagnostics', (req, res) => {
+  res.json({
+    status: 'diagnostic',
+    mongo: mongoConnected,
+    environment: {
+      node_env: process.env.NODE_ENV,
+      port: process.env.PORT,
+      has_mongo_uri: !!process.env.MONGO_URI,
+      has_jwt_secret: !!process.env.JWT_SECRET,
+      has_cashfree_config: !!process.env.CASHFREE_CLIENT_ID,
+      has_google_config: !!process.env.GOOGLE_CLIENT_ID
+    },
+    memory: {
+      heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
+      heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB'
+    },
+    uptime: process.uptime() + ' seconds',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// =======================
+// ✅ Root Endpoint
+// =======================
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'Climax OTT Backend API',
+    version: '2.0',
+    status: 'running',
+    endpoints: {
+      health: '/api/health',
+      diagnostics: '/api/diagnostics',
+      auth: '/api/auth',
+      contents: '/api/contents',
+      payments: '/api/payments',
+      cashfree: '/api/cashfree'
+    }
   });
 });
 
@@ -168,10 +223,12 @@ app.use('/api/payment-settings', paymentSettingsRoutes); // ✅ Payment Settings
 app.use('/api/payments', upiRoutes); // ✅ UPI Deep Link Gateway - Register FIRST
 app.use('/api/payments', paymentRoutes); // ✅ QR Code Payment Routes - Register SECOND
 app.use('/api/phonepe', phonepeRoutes); // ✅ PhonePe Gateway
+app.use('/api/cashfree', cashfreeRoutes); // ✅ Cashfree Gateway
 // app.use('/api/instamojo', instamojoRoutes); // ✅ Instamojo Gateway - USING INLINE ROUTES
 app.use('/api/participation', participationRoutes); // ✅ Participate & Win
 app.use('/api/quiz', quizRoutes); // ✅ Quiz System - Completely Separate
 app.use('/api/settings', settingsRoutes); // ✅ Settings Management
+app.use('/api/razorpay', razorpayRoutes); // ✅ Razorpay Payment Gateway
 console.log('✅ Quiz routes registered at /api/quiz');
 console.log('✅ Settings routes registered at /api/settings');
 
